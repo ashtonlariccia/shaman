@@ -37,29 +37,20 @@ const ANSI: ITheme = {
   brightWhite: "#f5f5f5",
 };
 
-/**
- * `#rrggbb` plus an alpha pair, which is how xterm takes a translucent colour.
- *
- * Kept at full opacity when alpha is 1 rather than emitting `...ff`: identical
- * to render, but it keeps the common case a plain six-digit colour in the
- * devtools.
- */
-export function withAlpha(hex: string, alpha: number): string {
-  if (alpha >= 1) return hex;
-  const pair = Math.round(Math.max(0, alpha) * 255)
-    .toString(16)
-    .padStart(2, "0");
-  return `${hex}${pair}`;
-}
-
 export function terminalTheme(appearance: Appearance): ITheme {
-  const alpha = appearance.backgroundOpacity / 100;
   return {
     ...ANSI,
-    background: withAlpha(BACKGROUND, alpha),
+    // Fully transparent, always -- the `.stage` behind it is what carries the
+    // opacity. If both did, the terminal would end up more opaque than the
+    // sidebar beside it at the same setting.
+    //
+    // Only the *default* background goes transparent. Cells a program has
+    // coloured itself keep their own background, which is what you want: a
+    // `ls` listing stays readable through a translucent window.
+    background: "#00000000",
     cursor: appearance.cursorColor,
-    // The glyph *under* the block cursor. It has to stay opaque or the
-    // character beneath a translucent window shows through the cursor itself.
+    // The glyph under a block cursor. Opaque on purpose: the cursor has to
+    // stay legible against whatever is showing through the window.
     cursorAccent: BACKGROUND,
   };
 }

@@ -63,6 +63,10 @@
       fontSize: appearance.current.fontSize,
       cursorStyle: appearance.current.cursorShape,
       cursorBlink: appearance.current.cursorBlink,
+      // Nothing at all in an unfocused tab. xterm's default is a hollow
+      // outline, which in a window of several terminals reads as several
+      // cursors -- only one of which is taking your keystrokes.
+      cursorInactiveStyle: "none",
       scrollback: 5000,
       allowProposedApi: true,
       // Set here because xterm only honours it at construction, and it has to

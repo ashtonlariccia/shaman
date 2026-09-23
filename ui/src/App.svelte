@@ -379,10 +379,14 @@
     user-select: none;
   }
 
+  /* The painted surface for the terminal area, rather than each TerminalView:
+     it covers the pane's padding too, so a translucent window has no
+     see-through gutter framing every terminal. */
   .stage {
     position: relative;
     flex: 1;
     min-width: 0;
     min-height: 0;
+    background: var(--bg);
   }
 </style>

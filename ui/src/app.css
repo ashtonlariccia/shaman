@@ -81,10 +81,23 @@ body,
   margin: 0;
 }
 
+/* Deliberately unpainted. Every region below paints itself at `--bg-alpha`,
+   and a translucent body underneath them all would compose with each one --
+   two 60% layers read as 84%, so the bars, the sidebar and the terminal would
+   each land on a different opacity than the slider says. One layer per
+   region, over nothing, is what makes the number mean what it claims. */
 body {
-  background: var(--bg);
+  background: transparent;
   color: var(--fg);
   overflow: hidden;
+}
+
+/* xterm ships `background-color: #000` on the viewport -- an opaque sheet over
+   the whole terminal, which no theme setting reaches. The renderer paints the
+   cells (including their background) by itself, so this layer has nothing to
+   contribute but the thing it breaks. */
+.xterm .xterm-viewport {
+  background-color: transparent !important;
 }
 
 /* Scrollbars, matched to the theme rather than left as bright Chromium defaults. */
