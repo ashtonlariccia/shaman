@@ -88,13 +88,20 @@
     background: transparent;
   }
 
+  /* The hover indicator lands exactly on the viewport's left border rather
+     than floating in the middle of the gap, so dragging looks like taking
+     hold of the edge you are actually moving.
+     
+     `right: -1px` puts it over the card's 1px border, which begins where this
+     element ends. The radius is subtracted top and bottom so it covers only
+     the straight run between the card's rounded corners -- a straight line
+     carried on past them would cut the curve. */
   .resizer::after {
     content: "";
     position: absolute;
-    top: 0;
-    bottom: 0;
-    left: 50%;
-    transform: translateX(-50%);
+    top: calc(var(--viewport-inset) + var(--viewport-radius));
+    bottom: calc(var(--viewport-inset) + var(--viewport-radius));
+    right: -1px;
     width: 1px;
     background: transparent;
     transition: background 120ms ease;
