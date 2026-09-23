@@ -1,12 +1,9 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  // Vite emits this as a bundled asset, which satisfies the `img-src 'self'` CSP.
-  import mark from "./shiv-mark.png";
   import type { SavedConnection, ShellProfile } from "./types";
   import { connectionLines } from "./connectionLabel";
   import KindIcon from "./KindIcon.svelte";
   import { KIND_TITLE, profileKind } from "./kinds";
-  import { RAIL_WIDTH } from "./layout";
 
   type Props = {
     profiles: ShellProfile[];
@@ -146,12 +143,10 @@
 
 <!-- data-tauri-drag-region makes the empty areas behave like a real titlebar. -->
 <header class="titlebar" data-tauri-drag-region>
-  <!-- Exactly the width of the collapsed rail, so the menus start clear of the
-       sidebar instead of sitting over it -- and stay put when it expands,
-       rather than sliding with a width they have nothing to do with. -->
-  <div class="brand" style="width: {RAIL_WIDTH}px" data-tauri-drag-region>
-    <img class="mark" src={mark} alt="" draggable="false" data-tauri-drag-region />
-  </div>
+  <!-- Holds the menus clear of the collapsed rail, and lines their chips up
+       with the viewport's left edge. Fixed, so they stay put when the sidebar
+       expands rather than sliding with a width they have nothing to do with. -->
+  <div class="gutter" data-tauri-drag-region></div>
 
   <nav class="menus" bind:this={menuWrap}>
     <!-- File -->
@@ -426,22 +421,12 @@
     z-index: 100;
   }
 
-  .brand {
-    display: flex;
+  /* The rail, plus the viewport's inset: the first menu chip then begins where
+     the terminal's own left edge is. Both values come from elsewhere so this
+     cannot drift out of step with the layout it is matching. */
+  .gutter {
     flex: none;
-    align-items: center;
-    /* Centred in the rail's column, like the collapse toggle at the other end
-       of it. */
-    justify-content: center;
-  }
-
-  .mark {
-    display: block;
-    height: 16px;
-    width: auto;
-    /* The bar is a drag region; the image must not swallow the drag. */
-    pointer-events: none;
-    user-select: none;
+    width: calc(var(--rail-width) + var(--viewport-inset));
   }
 
   .menus {
