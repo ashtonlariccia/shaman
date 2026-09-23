@@ -105,7 +105,6 @@
     display: flex;
     flex-direction: column;
     /* Darkest surface in the app, so it recedes behind the terminal. */
-    background: var(--bg-chrome);
     min-height: 0;
     transition: width 170ms cubic-bezier(0.2, 0.7, 0.3, 1);
     /* NOTE: no overflow here. `overflow` creates a clipping context, which is

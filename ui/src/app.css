@@ -13,13 +13,18 @@
      lets the opacity slider and acrylic work without recreating the window. */
   --bg-alpha: 1;
 
-  --bg: rgb(36 36 36 / var(--bg-alpha)); /* the terminal viewport */
-
-  /* One shade for all the chrome -- title bar, sidebar, pinned strip -- with
-     no dividers between them, so they read as a single frame the way a
-     browser's does. The only line in the window is the one around the
-     viewport, which is what the eye should be drawn to. */
+  /* The window's *only* translucent layer, painted once on `.app`. Title bar,
+     sidebar and pinned strip paint nothing of their own and simply sit on it,
+     which is what makes them a single seamless frame -- and what keeps the
+     inset around the viewport the same colour as the chrome instead of a
+     black moat showing the empty window through. */
   --bg-chrome: rgb(45 45 45 / var(--bg-alpha));
+
+  /* The viewport is the chrome *darkened*, not a second surface stacked on
+     it. A wash keeps the window one opacity: a `--bg-alpha` layer over a
+     `--bg-alpha` layer would make the terminal markedly more solid than the
+     bars around it at the same setting. */
+  --bg-viewport-wash: rgb(0 0 0 / 0.2);
 
   /* The viewport sits inset from the chrome as a rounded card. */
   --viewport-radius: 8px;

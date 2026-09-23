@@ -416,7 +416,6 @@
     align-items: center;
     height: 28px;
     flex: none;
-    background: var(--bg-chrome);
     user-select: none;
     /* Above the terminal stage, so menus are never painted over. */
     position: relative;

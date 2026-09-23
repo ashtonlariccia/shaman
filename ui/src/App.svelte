@@ -378,6 +378,8 @@
     flex-direction: column;
     height: 100%;
     min-height: 0;
+    /* The whole window's surface, including the inset around the viewport. */
+    background: var(--bg-chrome);
   }
 
   main {
@@ -406,7 +408,7 @@
     min-width: 0;
     min-height: 0;
     margin: var(--viewport-inset) var(--viewport-inset) var(--viewport-inset) 0;
-    background: var(--bg);
+    background: var(--bg-viewport-wash);
     border: 1px solid var(--border);
     border-radius: var(--viewport-radius);
     transition: margin-left 170ms cubic-bezier(0.2, 0.7, 0.3, 1);
