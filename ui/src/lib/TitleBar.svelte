@@ -6,6 +6,7 @@
   import { connectionLines } from "./connectionLabel";
   import KindIcon from "./KindIcon.svelte";
   import { KIND_TITLE, profileKind } from "./kinds";
+  import { RAIL_WIDTH } from "./layout";
 
   type Props = {
     profiles: ShellProfile[];
@@ -145,7 +146,10 @@
 
 <!-- data-tauri-drag-region makes the empty areas behave like a real titlebar. -->
 <header class="titlebar" data-tauri-drag-region>
-  <div class="brand" data-tauri-drag-region>
+  <!-- Exactly the width of the collapsed rail, so the menus start clear of the
+       sidebar instead of sitting over it -- and stay put when it expands,
+       rather than sliding with a width they have nothing to do with. -->
+  <div class="brand" style="width: {RAIL_WIDTH}px" data-tauri-drag-region>
     <img class="mark" src={mark} alt="" draggable="false" data-tauri-drag-region />
   </div>
 
@@ -424,8 +428,11 @@
 
   .brand {
     display: flex;
+    flex: none;
     align-items: center;
-    padding: 0 0.35rem 0 0.45rem;
+    /* Centred in the rail's column, like the collapse toggle at the other end
+       of it. */
+    justify-content: center;
   }
 
   .mark {

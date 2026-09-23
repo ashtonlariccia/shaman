@@ -8,7 +8,7 @@
   import ManageConnections from "./lib/ManageConnections.svelte";
   import PinBar from "./lib/PinBar.svelte";
   import SaveToast from "./lib/SaveToast.svelte";
-  import Sidebar, { RAIL_WIDTH } from "./lib/Sidebar.svelte";
+  import Sidebar from "./lib/Sidebar.svelte";
   import SidebarResizer from "./lib/SidebarResizer.svelte";
   import TerminalView from "./lib/TerminalView.svelte";
   import TitleBar from "./lib/TitleBar.svelte";
@@ -18,6 +18,7 @@
   import { copyFrom, pasteInto } from "./lib/clipboard";
   import { connectionLines } from "./lib/connectionLabel";
   import { clipboardShortcut } from "./lib/keys";
+  import { RAIL_WIDTH } from "./lib/layout";
   import { AppearanceStore } from "./lib/state/appearance.svelte";
   import { Connections } from "./lib/state/connections.svelte";
   import { TrustedHosts as TrustedHostStore } from "./lib/state/hosts.svelte";

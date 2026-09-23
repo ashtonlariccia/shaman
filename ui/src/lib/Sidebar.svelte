@@ -1,13 +1,3 @@
-<script module lang="ts">
-  /**
-   * Width of the collapsed rail.
-   *
-   * Wide enough for the kind glyph and the toggle to sit centred with room to
-   * breathe, narrow enough that it reads as a rail rather than a thin sidebar.
-   */
-  export const RAIL_WIDTH = 42;
-</script>
-
 <script lang="ts">
   import KindIcon from "./KindIcon.svelte";
   import { KIND_TITLE, slotKind } from "./kinds";
