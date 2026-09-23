@@ -103,8 +103,9 @@ pub async fn new_window(app: AppHandle) -> Result<String, String> {
 
     tauri::WebviewWindowBuilder::new(&app, &label, tauri::WebviewUrl::default())
         .title("Shaman")
-        .inner_size(1200.0, 800.0)
-        .min_inner_size(720.0, 480.0)
+        // Matches the window in tauri.conf.json.
+        .inner_size(960.0, 600.0)
+        .min_inner_size(520.0, 360.0)
         .decorations(false)
         // Matches the window in tauri.conf.json. The page paints its own
         // background, so an opaque look costs nothing -- but a window built

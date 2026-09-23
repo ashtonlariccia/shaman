@@ -19,10 +19,10 @@
     "windows": [
       {
         "title": "Shaman",
-        "width": 1200,
-        "height": 800,
-        "minWidth": 720,
-        "minHeight": 480,
+        "width": 960,
+        "height": 600,
+        "minWidth": 520,
+        "minHeight": 360,
         "resizable": true,
         "decorations": false,
         "theme": "Dark",

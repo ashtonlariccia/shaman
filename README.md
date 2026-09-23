@@ -1,33 +1,45 @@
 # Shaman
 
-A tabbed terminal manager for Windows. One window for `cmd`, PowerShell,
-elevated shells, WSL distros, and SSH connections — with a left sidebar to
-switch between them, launch new ones, and kill them.
+A tabbed terminal manager for Windows. One window for `cmd`, PowerShell, WSL
+distros, and SSH connections — with a left sidebar to switch between them,
+launch new ones, and kill them.
 
 See [`PLAN.md`](PLAN.md) for architecture and the phase roadmap.
 
-## Elevation
+## Elevation — currently off
 
-Release builds carry a `requireAdministrator` manifest, so **Shaman prompts for
-UAC once at launch** and admin terminals then open with no further prompts.
+**Shaman runs unelevated and no longer offers admin terminals.** Every build
+carries an `asInvoker` manifest, so there is no UAC prompt at launch, and the
+*(Admin)* entry is withheld from the new-terminal menu.
+
+It is parked rather than removed. The machinery all still works — `elevate.rs`,
+`shaman-helper`, and the integrity routing in `commands::session_open` — and
+turning it back on is two places: the execution level in
+`crates/shaman-app/build.rs`, and the admin entries in `profiles::detect`.
+
+<details>
+<summary>How it worked, for when it comes back</summary>
+
+Release builds carried a `requireAdministrator` manifest, so Shaman prompted
+for UAC once at launch and admin terminals then opened with no further prompts.
 
 That inverts the usual problem: children of an elevated process inherit its
-privileges, so *ordinary* terminals have to be pushed back down. They are hosted
-by `shaman-helper.exe`, which the app launches at medium integrity using the
-desktop shell's token. The helper must sit beside `shaman.exe`.
+privileges, so *ordinary* terminals have to be pushed back down. They were
+hosted by `shaman-helper.exe`, launched at medium integrity using the desktop
+shell's token, which must sit beside `shaman.exe`.
 
 Verified by spike when the model was built (see `PLAN.md` §4): in-process tabs
-report **High** integrity, helper-hosted tabs report **Medium**.
+reported **High** integrity, helper-hosted tabs **Medium**.
 
-Debug builds stay `asInvoker` so routine dev cycles don't fire UAC; admin tabs
-refuse to open there, with an explanation.
+</details>
 
 ## Status
 
 Phase 5 complete — SSH with password **and private-key** auth, host-key
-verification, saved connections, and a DPAPI-encrypted credential vault,
-alongside local and admin terminals. Phase 6 has started: copy/paste and the
-pinned-connection strip are in.
+verification, saved connections, and a DPAPI-encrypted credential vault. Phase
+6 is underway: copy/paste, the pinned-connection strip, appearance settings
+(Edit → Appearance) and a collapsible sidebar are in. Admin terminals are
+switched off for now — see above.
 
 Connecting is staged, so a host that is off or on another network fails in
 about five seconds with a plain reason instead of stalling: Shaman opens the TCP

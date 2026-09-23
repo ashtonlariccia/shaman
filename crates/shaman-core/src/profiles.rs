@@ -81,16 +81,11 @@ pub fn detect() -> Vec<ShellProfile> {
             elevated: false,
         });
 
-        // Runs at high integrity. Free of extra prompts because Shaman itself is
-        // already elevated; it simply does *not* get de-elevated like the rest.
-        out.push(ShellProfile {
-            id: "powershell-admin".into(),
-            label: "Windows PowerShell (Admin)".into(),
-            kind: SessionKind::PowerShell,
-            program: ps.to_string_lossy().into_owned(),
-            args: vec!["-NoLogo".into()],
-            elevated: true,
-        });
+        // An admin profile belongs here, and used to be here. It is withheld
+        // while the app runs `asInvoker` (see shaman-app/build.rs): a
+        // non-elevated Shaman cannot open an elevated child, so offering the
+        // entry would only ever produce the "restart as administrator" error.
+        // Better no menu entry than one that always fails.
     }
 
     let program_files = std::env::var_os("ProgramFiles")

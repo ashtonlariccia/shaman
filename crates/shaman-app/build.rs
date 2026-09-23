@@ -1,10 +1,14 @@
-//! Embeds an application manifest so release builds request elevation.
+//! Embeds an application manifest.
 //!
-//! Release builds run elevated (one UAC prompt at launch), which is what makes
-//! admin terminals open instantly afterwards. Debug builds deliberately stay
-//! `asInvoker`: routine `cargo run` / `verify.sh` cycles would otherwise fire a
-//! UAC prompt every single time. Elevation is tested by launching a build
-//! elevated on purpose.
+//! **Currently `asInvoker` in every profile: Shaman does not ask for
+//! elevation.** Release builds used to request `requireAdministrator` so that
+//! admin terminals could open without further prompts, at the cost of a UAC
+//! prompt on every launch and of every ordinary tab needing to be pushed back
+//! down to medium integrity by the helper.
+//!
+//! That is parked, not deleted -- `elevate.rs`, the helper crate, and the
+//! routing in `commands::session_open` all still work. Restoring it is this
+//! file plus the admin entries in `profiles::detect`.
 //!
 //! ## Do not drop the Common-Controls dependency
 //!
@@ -67,12 +71,9 @@ fn manifest(execution_level: &str) -> String {
 }
 
 fn main() {
-    let release = std::env::var("PROFILE").as_deref() == Ok("release");
-    let level = if release {
-        "requireAdministrator"
-    } else {
-        "asInvoker"
-    };
+    // Same in debug and release. When elevation comes back, this is where the
+    // release profile starts asking for `requireAdministrator` again.
+    let level = "asInvoker";
     println!("cargo:rerun-if-env-changed=PROFILE");
     println!("cargo:warning=embedding manifest with requestedExecutionLevel={level}");
 

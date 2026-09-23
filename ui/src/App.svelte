@@ -41,7 +41,9 @@
   // `sidebarWidth` stays the *expanded* width while collapsed, so expanding
   // returns to the width you dragged rather than a default.
   let sidebarWidth = $state(230);
-  let sidebarCollapsed = $state(false);
+  // Starts as the rail: the window opens small, and 230px of empty list is a
+  // quarter of it spent on nothing until a terminal exists.
+  let sidebarCollapsed = $state(true);
   let resizing = $state(false);
 
   const effectiveSidebarWidth = $derived(sidebarCollapsed ? RAIL_WIDTH : sidebarWidth);
