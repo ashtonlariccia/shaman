@@ -91,7 +91,9 @@ mod tests {
 
     #[test]
     fn wsl_sessions_label_with_their_distro() {
-        let kind = SessionKind::Wsl { distro: "main".into() };
+        let kind = SessionKind::Wsl {
+            distro: "main".into(),
+        };
         assert_eq!(kind.label(), "WSL · main");
     }
 }

@@ -141,9 +141,7 @@ impl Store {
     ) -> Result<SavedConnection> {
         let (kind, key_path, plaintext) = match auth {
             SshAuth::Password { password } => ("password", None, password.clone()),
-            SshAuth::Key { path, passphrase } => {
-                ("key", Some(path.clone()), passphrase.clone())
-            }
+            SshAuth::Key { path, passphrase } => ("key", Some(path.clone()), passphrase.clone()),
         };
         let secret = seal(&plaintext)?;
 
@@ -195,13 +193,15 @@ impl Store {
 
         let secret = unseal(&entry.secret)?;
 
-        Ok(match (entry.connection.auth_kind.as_str(), &entry.key_path) {
-            ("key", Some(path)) => SshAuth::Key {
-                path: path.clone(),
-                passphrase: secret,
+        Ok(
+            match (entry.connection.auth_kind.as_str(), &entry.key_path) {
+                ("key", Some(path)) => SshAuth::Key {
+                    path: path.clone(),
+                    passphrase: secret,
+                },
+                _ => SshAuth::Password { password: secret },
             },
-            _ => SshAuth::Password { password: secret },
-        })
+        )
     }
 
     /// Set or clear the display name. An empty name clears it.
@@ -260,7 +260,14 @@ mod tests {
         isolate();
         let mut store = Store::default();
         let saved = store
-            .upsert("10.0.0.5", 22, "root", &SshAuth::Password { password: "hunter2".into() })
+            .upsert(
+                "10.0.0.5",
+                22,
+                "root",
+                &SshAuth::Password {
+                    password: "hunter2".into(),
+                },
+            )
             .unwrap();
 
         let json = serde_json::to_string(&store).unwrap();
@@ -278,10 +285,24 @@ mod tests {
         isolate();
         let mut store = Store::default();
         let first = store
-            .upsert("host", 22, "me", &SshAuth::Password { password: "old".into() })
+            .upsert(
+                "host",
+                22,
+                "me",
+                &SshAuth::Password {
+                    password: "old".into(),
+                },
+            )
             .unwrap();
         let second = store
-            .upsert("host", 22, "me", &SshAuth::Password { password: "new".into() })
+            .upsert(
+                "host",
+                22,
+                "me",
+                &SshAuth::Password {
+                    password: "new".into(),
+                },
+            )
             .unwrap();
 
         assert_eq!(store.list().len(), 1, "must not duplicate");
@@ -297,8 +318,26 @@ mod tests {
     fn the_same_host_with_a_different_user_is_a_separate_entry() {
         isolate();
         let mut store = Store::default();
-        store.upsert("host", 22, "alice", &SshAuth::Password { password: "a".into() }).unwrap();
-        store.upsert("host", 22, "bob", &SshAuth::Password { password: "b".into() }).unwrap();
+        store
+            .upsert(
+                "host",
+                22,
+                "alice",
+                &SshAuth::Password {
+                    password: "a".into(),
+                },
+            )
+            .unwrap();
+        store
+            .upsert(
+                "host",
+                22,
+                "bob",
+                &SshAuth::Password {
+                    password: "b".into(),
+                },
+            )
+            .unwrap();
         assert_eq!(store.list().len(), 2);
     }
 
@@ -308,12 +347,22 @@ mod tests {
         isolate();
         let mut store = Store::default();
         let saved = store
-            .upsert("host", 22, "me", &SshAuth::Password { password: "pw".into() })
+            .upsert(
+                "host",
+                22,
+                "me",
+                &SshAuth::Password {
+                    password: "pw".into(),
+                },
+            )
             .unwrap();
 
         assert!(store.remove(&saved.id));
         assert!(store.list().is_empty());
-        assert!(!store.remove(&saved.id), "second remove reports nothing done");
+        assert!(
+            !store.remove(&saved.id),
+            "second remove reports nothing done"
+        );
     }
 
     #[test]
@@ -335,7 +384,10 @@ mod tests {
 
         assert_eq!(saved.auth_kind, "key");
         let json = serde_json::to_string(&store).unwrap();
-        assert!(!json.contains("secret-phrase"), "passphrase must not be plaintext");
+        assert!(
+            !json.contains("secret-phrase"),
+            "passphrase must not be plaintext"
+        );
 
         match store.auth(&saved.id).unwrap() {
             SshAuth::Key { path, passphrase } => {
@@ -352,12 +404,23 @@ mod tests {
         isolate();
         let mut store = Store::default();
         let saved = store
-            .upsert("10.0.0.5", 22, "me", &SshAuth::Password { password: "pw".into() })
+            .upsert(
+                "10.0.0.5",
+                22,
+                "me",
+                &SshAuth::Password {
+                    password: "pw".into(),
+                },
+            )
             .unwrap();
         assert_eq!(saved.name, None, "new entries start unnamed");
 
         assert_eq!(
-            store.rename(&saved.id, "  prod-db  ").unwrap().name.as_deref(),
+            store
+                .rename(&saved.id, "  prod-db  ")
+                .unwrap()
+                .name
+                .as_deref(),
             Some("prod-db"),
             "names are trimmed"
         );
@@ -375,12 +438,26 @@ mod tests {
         isolate();
         let mut store = Store::default();
         let saved = store
-            .upsert("10.0.0.5", 22, "me", &SshAuth::Password { password: "old".into() })
+            .upsert(
+                "10.0.0.5",
+                22,
+                "me",
+                &SshAuth::Password {
+                    password: "old".into(),
+                },
+            )
             .unwrap();
         store.rename(&saved.id, "prod-db").unwrap();
 
         let again = store
-            .upsert("10.0.0.5", 22, "me", &SshAuth::Password { password: "new".into() })
+            .upsert(
+                "10.0.0.5",
+                22,
+                "me",
+                &SshAuth::Password {
+                    password: "new".into(),
+                },
+            )
             .unwrap();
         assert_eq!(again.name.as_deref(), Some("prod-db"));
     }
@@ -402,8 +479,14 @@ mod tests {
         });
 
         assert!(store.find("server.local", 22, "me").is_some());
-        assert!(store.find("server.local", 22, "ME").is_none(), "user is case-sensitive");
-        assert!(store.find("server.local", 2222, "me").is_none(), "port matters");
+        assert!(
+            store.find("server.local", 22, "ME").is_none(),
+            "user is case-sensitive"
+        );
+        assert!(
+            store.find("server.local", 2222, "me").is_none(),
+            "port matters"
+        );
     }
 
     #[test]

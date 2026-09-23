@@ -230,9 +230,7 @@ impl Handler for VerifyHostKey {
         &mut self,
         key: &russh::keys::ssh_key::PublicKey,
     ) -> std::result::Result<bool, Self::Error> {
-        let fingerprint = key
-            .fingerprint(russh::keys::HashAlg::Sha256)
-            .to_string();
+        let fingerprint = key.fingerprint(russh::keys::HashAlg::Sha256).to_string();
 
         let known = KnownHosts::load().unwrap_or_default();
         let verdict = known.verdict(&self.host, self.port, &fingerprint);
@@ -304,7 +302,10 @@ impl SshSession {
             {
                 Ok(rt) => rt,
                 Err(e) => {
-                    let _ = ready_tx.send(Err(SshError::new(SshFailure::Session, format!("could not start the SSH runtime: {e}"))));
+                    let _ = ready_tx.send(Err(SshError::new(
+                        SshFailure::Session,
+                        format!("could not start the SSH runtime: {e}"),
+                    )));
                     return;
                 }
             };
@@ -372,9 +373,7 @@ impl SshSession {
 
                 let _ = channel.close().await;
                 // Say goodbye properly rather than dropping the socket.
-                let _ = handle
-                    .disconnect(Disconnect::ByApplication, "", "en")
-                    .await;
+                let _ = handle.disconnect(Disconnect::ByApplication, "", "en").await;
                 drop(raw_tx); // flushes the coalescer
                 on_exit();
             });
@@ -382,13 +381,12 @@ impl SshSession {
 
         // Propagate the connect result to the caller.
         match ready_rx.recv() {
-            Ok(Ok(())) => Ok(Self {
-                id,
-                kind,
-                commands,
-            }),
+            Ok(Ok(())) => Ok(Self { id, kind, commands }),
             Ok(Err(err)) => Err(err),
-            Err(_) => Err(SshError::new(SshFailure::Session, "the SSH worker stopped before reporting a result")),
+            Err(_) => Err(SshError::new(
+                SshFailure::Session,
+                "the SSH worker stopped before reporting a result",
+            )),
         }
     }
 }
@@ -470,7 +468,10 @@ async fn establish(
             // network.
             let seen = outcome.lock().ok().and_then(|o| o.clone());
             return Err(match seen {
-                Some(HostKeyOutcome { fingerprint, verdict: Verdict::Unknown }) => SshError {
+                Some(HostKeyOutcome {
+                    fingerprint,
+                    verdict: Verdict::Unknown,
+                }) => SshError {
                     kind: SshFailure::UnknownHostKey,
                     message: format!(
                         "{}:{} presented a host key Shaman has not seen before.",
@@ -479,19 +480,20 @@ async fn establish(
                     fingerprint: Some(fingerprint),
                     expected_fingerprint: None,
                 },
-                Some(HostKeyOutcome { fingerprint, verdict: Verdict::Changed { expected } }) => {
-                    SshError {
-                        kind: SshFailure::HostKeyChanged,
-                        message: format!(
-                            "The host key for {}:{} has CHANGED. This happens when a server is \
+                Some(HostKeyOutcome {
+                    fingerprint,
+                    verdict: Verdict::Changed { expected },
+                }) => SshError {
+                    kind: SshFailure::HostKeyChanged,
+                    message: format!(
+                        "The host key for {}:{} has CHANGED. This happens when a server is \
                              rebuilt — but it is also what an impersonation attack looks like. \
                              Do not continue unless you know why it changed.",
-                            opts.host, opts.port
-                        ),
-                        fingerprint: Some(fingerprint),
-                        expected_fingerprint: Some(expected),
-                    }
-                }
+                        opts.host, opts.port
+                    ),
+                    fingerprint: Some(fingerprint),
+                    expected_fingerprint: Some(expected),
+                },
                 // The socket opened, so the address is right and something is
                 // listening — it just isn't talking SSH, or not to us.
                 _ => SshError::new(
@@ -548,7 +550,12 @@ async fn establish(
         ));
     }
 
-    let channel = handle.channel_open_session().await.map_err(|err| SshError::new(SshFailure::Session, format!("connected, but could not open a session: {err}")))?;
+    let channel = handle.channel_open_session().await.map_err(|err| {
+        SshError::new(
+            SshFailure::Session,
+            format!("connected, but could not open a session: {err}"),
+        )
+    })?;
 
     channel
         .request_pty(
@@ -561,12 +568,19 @@ async fn establish(
             &[],
         )
         .await
-        .map_err(|err| SshError::new(SshFailure::Session, format!("the server refused a terminal: {err}")))?;
+        .map_err(|err| {
+            SshError::new(
+                SshFailure::Session,
+                format!("the server refused a terminal: {err}"),
+            )
+        })?;
 
-    channel
-        .request_shell(true)
-        .await
-        .map_err(|err| SshError::new(SshFailure::Session, format!("the server refused a shell: {err}")))?;
+    channel.request_shell(true).await.map_err(|err| {
+        SshError::new(
+            SshFailure::Session,
+            format!("the server refused a shell: {err}"),
+        )
+    })?;
 
     Ok((handle, channel))
 }
@@ -612,7 +626,12 @@ async fn authenticate(
                     russh::keys::PrivateKeyWithHashAlg::new(
                         Arc::new(key),
                         // Let the server pick; modern hosts reject ssh-rsa/SHA-1.
-                        handle.best_supported_rsa_hash().await.ok().flatten().flatten(),
+                        handle
+                            .best_supported_rsa_hash()
+                            .await
+                            .ok()
+                            .flatten()
+                            .flatten(),
                     ),
                 )
                 .await
@@ -802,7 +821,9 @@ mod tests {
             host: "10.0.0.5".into(),
             port: 22,
             username: "root".into(),
-            auth: SshAuth::Password { password: "hunter2".into() },
+            auth: SshAuth::Password {
+                password: "hunter2".into(),
+            },
             cols: 80,
             rows: 24,
             trust_new_key: false,
@@ -820,7 +841,9 @@ mod tests {
                 host: "127.0.0.1".into(),
                 port: 1,
                 username: "nobody".into(),
-                auth: SshAuth::Password { password: "nothing".into() },
+                auth: SshAuth::Password {
+                    password: "nothing".into(),
+                },
                 cols: 80,
                 rows: 24,
                 trust_new_key: true,
@@ -855,7 +878,9 @@ mod tests {
                 host: "192.0.2.1".into(),
                 port: 22,
                 username: "nobody".into(),
-                auth: SshAuth::Password { password: "nothing".into() },
+                auth: SshAuth::Password {
+                    password: "nothing".into(),
+                },
                 cols: 80,
                 rows: 24,
                 trust_new_key: true,
@@ -891,7 +916,9 @@ mod tests {
                 host: "127.0.0.1".into(),
                 port,
                 username: fake_server::USER.into(),
-                auth: SshAuth::Password { password: "wrong-password".into() },
+                auth: SshAuth::Password {
+                    password: "wrong-password".into(),
+                },
                 cols: 80,
                 rows: 24,
                 trust_new_key: true,
@@ -927,7 +954,9 @@ mod tests {
                 host: "127.0.0.1".into(),
                 port,
                 username: fake_server::USER.into(),
-                auth: SshAuth::Password { password: fake_server::PASSWORD.into() },
+                auth: SshAuth::Password {
+                    password: fake_server::PASSWORD.into(),
+                },
                 cols: 80,
                 rows: 24,
                 trust_new_key: false,
@@ -956,8 +985,9 @@ mod tests {
         isolate_data_dir();
 
         // Write a throwaway unencrypted key to a temp file.
-        let key = russh::keys::PrivateKey::random(&mut rand::rng(), russh::keys::Algorithm::Ed25519)
-            .expect("generate key");
+        let key =
+            russh::keys::PrivateKey::random(&mut rand::rng(), russh::keys::Algorithm::Ed25519)
+                .expect("generate key");
         let pem = key
             .to_openssh(russh::keys::ssh_key::LineEnding::LF)
             .expect("encode key");
@@ -1008,7 +1038,8 @@ mod tests {
                 username: fake_server::USER.into(),
                 auth: SshAuth::Key {
                     path: r"C:
-ope\id_ed25519".into(),
+ope\id_ed25519"
+                        .into(),
                     passphrase: String::new(),
                 },
                 cols: 80,
@@ -1047,7 +1078,9 @@ ope\id_ed25519".into(),
                 host: "127.0.0.1".into(),
                 port,
                 username: fake_server::USER.into(),
-                auth: SshAuth::Password { password: fake_server::PASSWORD.into() },
+                auth: SshAuth::Password {
+                    password: fake_server::PASSWORD.into(),
+                },
                 cols: 80,
                 rows: 24,
                 trust_new_key: true,

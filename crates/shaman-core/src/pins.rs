@@ -237,7 +237,11 @@ mod tests {
             assert!(store.move_to(PinKind::Local, "c", index));
             let mut seen = order(&store);
             seen.sort();
-            assert_eq!(seen, ["a", "b", "c", "d", "e"], "lost or duplicated at {index}");
+            assert_eq!(
+                seen,
+                ["a", "b", "c", "d", "e"],
+                "lost or duplicated at {index}"
+            );
         }
     }
 
@@ -245,7 +249,10 @@ mod tests {
     fn moving_something_that_is_not_pinned_reports_nothing_done() {
         let mut store = strip(&["a"]);
         assert!(!store.move_to(PinKind::Local, "nope", 0));
-        assert!(!store.move_to(PinKind::Saved, "a", 0), "kind is part of the match");
+        assert!(
+            !store.move_to(PinKind::Saved, "a", 0),
+            "kind is part of the match"
+        );
         assert_eq!(order(&store), ["a"]);
     }
 

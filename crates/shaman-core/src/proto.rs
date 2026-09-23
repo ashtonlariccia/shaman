@@ -149,7 +149,10 @@ mod tests {
         while let Some(f) = read_frame(&mut cursor).unwrap() {
             seen.push((f.tag, f.id, f.payload.len()));
         }
-        assert_eq!(seen, vec![(TAG_DATA, 1, 1), (TAG_DATA, 2, 2), (TAG_EXIT, 1, 0)]);
+        assert_eq!(
+            seen,
+            vec![(TAG_DATA, 1, 1), (TAG_DATA, 2, 2), (TAG_EXIT, 1, 0)]
+        );
     }
 
     #[test]

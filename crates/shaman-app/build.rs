@@ -76,9 +76,8 @@ fn main() {
     println!("cargo:rerun-if-env-changed=PROFILE");
     println!("cargo:warning=embedding manifest with requestedExecutionLevel={level}");
 
-    let attributes = tauri_build::Attributes::new().windows_attributes(
-        tauri_build::WindowsAttributes::new().app_manifest(manifest(level)),
-    );
+    let attributes = tauri_build::Attributes::new()
+        .windows_attributes(tauri_build::WindowsAttributes::new().app_manifest(manifest(level)));
 
     tauri_build::try_build(attributes).expect("failed to run tauri-build");
 }

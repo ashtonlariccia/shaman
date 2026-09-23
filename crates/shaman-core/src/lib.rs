@@ -18,20 +18,20 @@ pub mod pty;
 pub mod pump;
 pub mod registry;
 pub mod session;
-pub mod vault;
 pub mod ssh;
+pub mod vault;
 pub mod win;
 
+pub use connections::{SavedConnection, Store as ConnectionStore};
 pub use elevate::{is_elevated, spawn_deelevated};
 pub use helper::{Helper, HelperSession};
+pub use known_hosts::{KnownHosts, TrustedHost, Verdict};
+pub use pins::{Pin, PinKind, Store as PinStore};
 pub use profiles::ShellProfile;
 pub use pty::{PtyOptions, PtySession};
 pub use pump::CoalesceConfig;
 pub use registry::{Registry, SessionSummary};
 pub use session::{Session, SessionId, SessionKind};
-pub use connections::{SavedConnection, Store as ConnectionStore};
-pub use known_hosts::{KnownHosts, TrustedHost, Verdict};
-pub use pins::{Pin, PinKind, Store as PinStore};
 pub use ssh::{DiscoveredKey, SshAuth, SshError, SshFailure, SshOptions, SshSession};
 pub use win::harden_dll_search;
 

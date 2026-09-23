@@ -209,8 +209,14 @@ mod tests {
         let mut listed = known.list();
         listed.sort_by(|a, b| a.host.cmp(&b.host));
 
-        assert_eq!((listed[0].host.as_str(), listed[0].port), ("10.0.0.5", 2222));
-        assert_eq!((listed[1].host.as_str(), listed[1].port), ("example.com", 22));
+        assert_eq!(
+            (listed[0].host.as_str(), listed[0].port),
+            ("10.0.0.5", 2222)
+        );
+        assert_eq!(
+            (listed[1].host.as_str(), listed[1].port),
+            ("example.com", 22)
+        );
     }
 
     #[test]
@@ -219,10 +225,19 @@ mod tests {
         known.trust("a.example", 22, FP_A);
         known.trust("b.example", 2222, FP_B);
 
-        let key = known.list().iter().find(|t| t.host == "b.example").unwrap().key.clone();
+        let key = known
+            .list()
+            .iter()
+            .find(|t| t.host == "b.example")
+            .unwrap()
+            .key
+            .clone();
         assert!(known.forget_key(&key));
         assert_eq!(known.len(), 1);
-        assert!(!known.forget_key(&key), "second removal reports nothing done");
+        assert!(
+            !known.forget_key(&key),
+            "second removal reports nothing done"
+        );
     }
 
     #[test]

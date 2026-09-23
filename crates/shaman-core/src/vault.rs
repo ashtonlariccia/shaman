@@ -189,7 +189,11 @@ mod tests {
         let mut sealed = seal("hunter2").expect("seal");
         // Flip a byte in the middle of the blob.
         let middle = sealed.len() / 2;
-        let flipped = if &sealed[middle..middle + 1] == "a" { "b" } else { "a" };
+        let flipped = if &sealed[middle..middle + 1] == "a" {
+            "b"
+        } else {
+            "a"
+        };
         sealed.replace_range(middle..middle + 1, flipped);
 
         assert!(unseal(&sealed).is_err(), "DPAPI must reject tampering");

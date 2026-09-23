@@ -259,7 +259,8 @@ impl Session for HelperSession {
     }
 
     fn kill(&mut self) -> Result<()> {
-        self.helper.subscribers
+        self.helper
+            .subscribers
             .lock()
             .expect("subscriber lock")
             .remove(&self.id.0);

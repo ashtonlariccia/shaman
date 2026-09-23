@@ -108,21 +108,19 @@ impl PtySession {
         // in practice a shell has not spawned anything by this point.
         #[cfg(windows)]
         let job = match crate::win::Job::new_kill_on_close() {
-            Ok(job) => {
-                match child.as_raw_handle() {
-                    Some(handle) => match job.assign(handle) {
-                        Ok(()) => Some(job),
-                        Err(err) => {
-                            tracing::warn!("could not put shell in job object: {err}");
-                            None
-                        }
-                    },
-                    None => {
-                        tracing::warn!("shell exposed no process handle; tree kill unavailable");
+            Ok(job) => match child.as_raw_handle() {
+                Some(handle) => match job.assign(handle) {
+                    Ok(()) => Some(job),
+                    Err(err) => {
+                        tracing::warn!("could not put shell in job object: {err}");
                         None
                     }
+                },
+                None => {
+                    tracing::warn!("shell exposed no process handle; tree kill unavailable");
+                    None
                 }
-            }
+            },
             Err(err) => {
                 tracing::warn!("could not create job object: {err}");
                 None
@@ -345,7 +343,10 @@ mod tests {
             // WSL may have to boot a VM, so the budget is generous.
             match run_until_marker(opts, &marker, 2, Duration::from_secs(60)) {
                 Ok(_) => {}
-                Err(err) => panic!("profile '{}' ({}) failed: {err}", profile.id, profile.program),
+                Err(err) => panic!(
+                    "profile '{}' ({}) failed: {err}",
+                    profile.id, profile.program
+                ),
             }
         }
     }

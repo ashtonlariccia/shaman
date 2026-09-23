@@ -235,7 +235,11 @@ mod tests {
     #[cfg(windows)]
     fn find_round_trips_detected_ids() {
         for profile in detect() {
-            assert!(find(&profile.id).is_some(), "find failed for {}", profile.id);
+            assert!(
+                find(&profile.id).is_some(),
+                "find failed for {}",
+                profile.id
+            );
         }
         assert!(find("no-such-shell").is_none());
     }
