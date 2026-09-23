@@ -2,6 +2,7 @@ import { mount } from "svelte";
 import { invoke } from "@tauri-apps/api/core";
 import App from "./App.svelte";
 import "./app.css";
+import "./dialog.css";
 
 // Frontend errors are otherwise invisible: WebView2 has no console we can read
 // from the outside, so a thrown component error just silently renders nothing.

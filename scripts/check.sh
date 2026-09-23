@@ -6,7 +6,10 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 echo "==> cargo fmt --check"
-cargo.exe fmt --all -- --check || echo "    (formatting drift; run: cargo.exe fmt --all)"
+cargo.exe fmt --all -- --check || {
+  echo "    formatting drift -- run: cargo.exe fmt --all" >&2
+  exit 1
+}
 
 echo "==> cargo clippy"
 cargo.exe clippy --workspace --all-targets -- -D warnings
