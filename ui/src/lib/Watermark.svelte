@@ -27,10 +27,12 @@
   .art {
     margin: 0;
     font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
-    /* The art is 54 lines tall by 76 wide, so height is the binding constraint
-       -- min() takes whichever of height/width runs out first, which keeps it
-       fitting whatever shape the window is. */
-    font-size: clamp(3px, min(0.95vh, 1.1vw), 14px);
+    /* The art is 14 lines tall by 76 wide. A monospace cell is about 0.6em, so
+       it is roughly 3.3x wider than it is tall and *width* is the binding
+       constraint -- the opposite of the 54-line version this replaced.
+       min() takes whichever of height/width runs out first, so it still fits
+       whatever shape the window is. */
+    font-size: clamp(3px, min(6vh, 1.9vw), 20px);
     /* 1.0 keeps the character cell close to a terminal's aspect ratio; anything
        taller stretches the drawing vertically. */
     line-height: 1;
