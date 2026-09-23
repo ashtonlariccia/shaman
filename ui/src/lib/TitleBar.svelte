@@ -1,5 +1,7 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
+  // Vite emits this as a bundled asset, which satisfies the `img-src 'self'` CSP.
+  import mark from "./wave-mark.png";
   import type { SavedConnection, ShellProfile } from "./types";
   import { connectionLines } from "./connectionLabel";
   import KindIcon from "./KindIcon.svelte";
@@ -146,7 +148,9 @@
   <!-- Holds the menus clear of the collapsed rail, and lines their chips up
        with the viewport's left edge. Fixed, so they stay put when the sidebar
        expands rather than sliding with a width they have nothing to do with. -->
-  <div class="gutter" data-tauri-drag-region></div>
+  <div class="gutter" data-tauri-drag-region>
+    <img class="mark" src={mark} alt="" draggable="false" data-tauri-drag-region />
+  </div>
 
   <nav class="menus" bind:this={menuWrap}>
     <!-- File -->
@@ -426,7 +430,21 @@
      cannot drift out of step with the layout it is matching. */
   .gutter {
     flex: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: calc(var(--rail-width) + var(--viewport-inset));
+  }
+
+  /* The mark is ~2.9x wider than tall, which is what lets it sit in a gutter
+     this narrow at all. Height is the constraint in a 28px bar. */
+  .mark {
+    display: block;
+    height: 13px;
+    width: auto;
+    /* The bar is a drag region; the image must not swallow the drag. */
+    pointer-events: none;
+    user-select: none;
   }
 
   .menus {

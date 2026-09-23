@@ -2,11 +2,11 @@
   // Imported raw rather than inlined: a template literal would need every
   // backslash and backtick escaped, and one missed escape silently corrupts the
   // picture. `?raw` keeps it byte-for-byte.
-  import shiv from "./shiv.txt?raw";
+  import waves from "./waves.txt?raw";
 
   // Trailing newline trimmed so it doesn't add a blank line and skew the
   // vertical centring.
-  const ART = shiv.replace(/\s+$/, "");
+  const ART = waves.replace(/\s+$/, "");
 </script>
 
 <div class="blank">
@@ -27,12 +27,15 @@
   .art {
     margin: 0;
     font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
-    /* The art is 14 lines tall by 76 wide. A monospace cell is about 0.6em, so
-       it is roughly 3.3x wider than it is tall and *width* is the binding
-       constraint -- the opposite of the 54-line version this replaced.
-       min() takes whichever of height/width runs out first, so it still fits
-       whatever shape the window is. */
-    font-size: clamp(3px, min(6vh, 1.9vw), 20px);
+    /* 27 lines by 150 columns. At ~0.6em per cell that is 90 character-widths
+       across, so it is ~3.3x wider than tall and *width* binds; min() takes
+       whichever of height/width runs out first either way.
+       
+       Deliberately small. The art is dense enough now that the shading reads
+       as texture rather than as characters, and at this size it sits behind
+       the empty stage instead of filling it. The 12px cap keeps it modest on
+       a large monitor rather than growing to match. */
+    font-size: clamp(3px, min(3vh, 0.7vw), 12px);
     /* 1.0 keeps the character cell close to a terminal's aspect ratio; anything
        taller stretches the drawing vertically. */
     line-height: 1;
