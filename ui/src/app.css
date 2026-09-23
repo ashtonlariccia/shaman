@@ -7,10 +7,20 @@
    readable as separate panes. */
 
 :root {
-  --bg: #242424; /* editor / terminal */
-  --bg-side: #262626; /* sidebar */
-  --bg-title: #2d2d2d; /* title bar */
-  --bg-menu: #2a2a2a; /* dropdown surfaces */
+  /* How solid the window is, 0-1, written by the appearance settings. The
+     window itself is always transparent (tauri.conf.json), so these surfaces
+     are the only thing standing between you and the desktop -- which is what
+     lets the opacity slider and acrylic work without recreating the window. */
+  --bg-alpha: 1;
+
+  --bg: rgb(36 36 36 / var(--bg-alpha)); /* editor / terminal */
+  --bg-side: rgb(38 38 38 / var(--bg-alpha)); /* sidebar */
+  --bg-title: rgb(45 45 45 / var(--bg-alpha)); /* title bar */
+
+  /* Deliberately opaque, both of them. A translucent dropdown over a
+     translucent terminal is unreadable, and a text field you can see the
+     desktop through is worse. */
+  --bg-menu: #2a2a2a;
   --bg-input: #2f2f2f;
 
   --border: #383838;

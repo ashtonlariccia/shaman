@@ -35,6 +35,17 @@ pub fn data_dir() -> Result<PathBuf> {
     Ok(dir)
 }
 
+/// Drop a UTF-8 byte-order mark, if the file has one.
+///
+/// Every store here is a JSON file a user might reasonably open and edit, and
+/// the Windows tools they would reach for -- Notepad, `Out-File`, `Set-Content`
+/// -- write UTF-8 *with* a BOM by default. `serde_json` treats those three
+/// leading bytes as a parse error at line 1 column 1, so without this a
+/// hand-edited config comes back as "corrupt" with nothing visibly wrong in it.
+pub fn strip_bom(text: &str) -> &str {
+    text.strip_prefix('\u{feff}').unwrap_or(text)
+}
+
 /// Hex rather than base64 to avoid a dependency for a handful of small blobs.
 pub fn to_hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()

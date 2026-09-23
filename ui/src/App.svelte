@@ -3,6 +3,7 @@
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
 
+  import AppearanceDialog from "./lib/AppearanceDialog.svelte";
   import ConnectDialog, { type SshRequest } from "./lib/ConnectDialog.svelte";
   import ManageConnections from "./lib/ManageConnections.svelte";
   import PinBar from "./lib/PinBar.svelte";
@@ -17,6 +18,7 @@
   import { copyFrom, pasteInto } from "./lib/clipboard";
   import { connectionLines } from "./lib/connectionLabel";
   import { clipboardShortcut } from "./lib/keys";
+  import { AppearanceStore } from "./lib/state/appearance.svelte";
   import { Connections } from "./lib/state/connections.svelte";
   import { TrustedHosts as TrustedHostStore } from "./lib/state/hosts.svelte";
   import { Pins } from "./lib/state/pins.svelte";
@@ -29,10 +31,12 @@
   const pins = new Pins();
   const hosts = new TrustedHostStore();
   const ssh = new SshFlow();
+  const appearance = new AppearanceStore();
 
   let profiles = $state<ShellProfile[]>([]);
   let manageOpen = $state(false);
   let hostKeysOpen = $state(false);
+  let appearanceOpen = $state(false);
 
   let sidebarWidth = $state(230);
   let resizing = $state(false);
@@ -184,6 +188,13 @@
     else void pasteInto(sessions.activeTerminal);
   }
 
+  // Drives every surface in app.css at once, so opacity is one number in one
+  // place rather than a rule per pane. Set on the root element because the
+  // whole cascade reads it, including components this file never touches.
+  $effect(() => {
+    document.documentElement.style.setProperty("--bg-alpha", String(appearance.alpha));
+  });
+
   onMount(() => {
     (async () => {
       try {
@@ -194,6 +205,7 @@
       await connections.refresh();
       await pins.refresh();
       await connections.refreshKeys();
+      await appearance.load();
       // Deliberately opens nothing: the app starts empty, and a terminal is
       // launched from the Terminal menu.
 
@@ -242,6 +254,7 @@
     onclose={() => sessions.closeActive()}
     onrefresh={() => sessions.refreshActive()}
     onnewwindow={newWindow}
+    onappearance={() => (appearanceOpen = true)}
     oncopy={() => void copyFrom(sessions.activeTerminal)}
     onpaste={() => void pasteInto(sessions.activeTerminal)}
     onquit={quit}
@@ -268,6 +281,7 @@
           profileId={slot.profileId}
           ssh={slot.ssh ?? undefined}
           active={slot.key === sessions.activeKey}
+          {appearance}
           onopened={(id) => {
             sessions.markOpened(slot.key, id);
             ssh.connected(slot.key);
@@ -325,6 +339,12 @@
     hosts={hosts.list}
     onforget={(key) => void hosts.forget(key)}
     onclose={() => (hostKeysOpen = false)}
+  />
+
+  <AppearanceDialog
+    open={appearanceOpen}
+    {appearance}
+    onclose={() => (appearanceOpen = false)}
   />
 
   <ConnectDialog

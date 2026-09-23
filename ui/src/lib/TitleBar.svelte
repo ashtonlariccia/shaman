@@ -28,6 +28,7 @@
     onnewwindow: () => void;
     oncopy: () => void;
     onpaste: () => void;
+    onappearance: () => void;
     onquit: () => void;
   };
 
@@ -49,6 +50,7 @@
     onnewwindow,
     oncopy,
     onpaste,
+    onappearance,
     onquit,
   }: Props = $props();
 
@@ -237,6 +239,12 @@
           >
             <span>Paste</span>
             <span class="hint">Ctrl+Shift+V</span>
+          </button>
+
+          <div class="sep"></div>
+
+          <button class="menu-item" role="menuitem" onclick={() => run(onappearance)}>
+            Appearance…
           </button>
         </div>
       {/if}

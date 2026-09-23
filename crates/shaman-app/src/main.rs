@@ -109,9 +109,18 @@ fn main() {
             );
         })
         .manage(commands::Sessions::default())
+        // Window effects are set on a live window, not declared in the config,
+        // so a saved acrylic setting has to be re-applied every launch --
+        // otherwise it survives in settings.json but not on screen.
+        .setup(|app| {
+            commands::restore_material(app.handle());
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             ui_ready,
             commands::list_profiles,
+            commands::appearance,
+            commands::set_appearance,
             commands::new_window,
             commands::session_open,
             commands::ssh_connect,

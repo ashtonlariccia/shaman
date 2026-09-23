@@ -10,12 +10,16 @@
   import { CLEAR_LINE, lineEditorFor } from "./lineEditor";
 
   import type { SshRequest } from "./ConnectDialog.svelte";
+  import { terminalTheme } from "./theme";
+  import type { AppearanceStore } from "./state/appearance.svelte";
 
   type Props = {
     /** Exactly one of these: a local shell profile, or an SSH target. */
     profileId?: string;
     ssh?: SshRequest;
     active: boolean;
+    /** Shared look. Changes here reach every open terminal, live. */
+    appearance: AppearanceStore;
     onopened?: (sessionId: number) => void;
     onfailed?: (failure: import("./types").SshFailureInfo) => void;
     /** Hands the menu bar a handle on this terminal. */
@@ -31,6 +35,7 @@
     profileId,
     ssh,
     active,
+    appearance,
     onopened,
     onfailed,
     onready,
@@ -54,36 +59,18 @@
 
   onMount(() => {
     const t = new Terminal({
-      fontFamily: '"Cascadia Mono", Consolas, "Courier New", monospace',
-      fontSize: 13,
+      fontFamily: appearance.fontStack,
+      fontSize: appearance.current.fontSize,
+      cursorStyle: appearance.current.cursorShape,
+      cursorBlink: appearance.current.cursorBlink,
       scrollback: 5000,
-      cursorBlink: true,
       allowProposedApi: true,
-      // Catppuccin Charcoal, matching ui/src/app.css. Background tracks the
-      // editor surface so the terminal and its padding are seamless.
-      theme: {
-        background: "#242424",
-        foreground: "#d8d8d8",
-        cursor: "#f5e0dc",
-        cursorAccent: "#242424",
-        selectionBackground: "#cba6f733",
-        black: "#404040",
-        red: "#f38ba8",
-        green: "#a6e3a1",
-        yellow: "#f9e2af",
-        blue: "#89b4fa",
-        magenta: "#cba6f7",
-        cyan: "#94e2d5",
-        white: "#d0d0d0",
-        brightBlack: "#5c5c5c",
-        brightRed: "#f38ba8",
-        brightGreen: "#a6e3a1",
-        brightYellow: "#f9e2af",
-        brightBlue: "#89b4fa",
-        brightMagenta: "#cba6f7",
-        brightCyan: "#94e2d5",
-        brightWhite: "#f5f5f5",
-      },
+      // Set here because xterm only honours it at construction, and it has to
+      // be on for the opacity setting to mean anything. The documented cost is
+      // to the DOM renderer; the WebGL one below handles transparency natively,
+      // and it is what actually draws unless the driver refuses.
+      allowTransparency: true,
+      theme: terminalTheme(appearance.current),
     });
     const f = new FitAddon();
     t.loadAddon(f);
@@ -299,6 +286,30 @@
       if (sessionId !== null) void invoke("session_close", { id: sessionId });
       t.dispose();
     };
+  });
+
+  /**
+   * Restyle every open terminal when the settings change.
+   *
+   * A font or size change alters the cell size, so the terminal is re-fitted
+   * and the new dimensions sent to the shell -- otherwise the program on the
+   * far end keeps wrapping to the old width.
+   */
+  $effect(() => {
+    const a = appearance.current;
+    const fontStack = appearance.fontStack;
+    const theme = terminalTheme(a);
+
+    const t = term;
+    if (!t) return;
+
+    t.options.fontFamily = fontStack;
+    t.options.fontSize = a.fontSize;
+    t.options.cursorStyle = a.cursorShape;
+    t.options.cursorBlink = a.cursorBlink;
+    t.options.theme = theme;
+
+    syncSize();
   });
 
   // A hidden terminal can't be measured, so re-fit when it comes back into view.

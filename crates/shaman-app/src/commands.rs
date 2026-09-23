@@ -106,8 +106,15 @@ pub async fn new_window(app: AppHandle) -> Result<String, String> {
         .inner_size(1200.0, 800.0)
         .min_inner_size(720.0, 480.0)
         .decorations(false)
+        // Matches the window in tauri.conf.json. The page paints its own
+        // background, so an opaque look costs nothing -- but a window built
+        // opaque could never become translucent without a restart.
+        .transparent(true)
         .build()
         .map_err(|e| format!("could not open a new window: {e}"))?;
+
+    // Effects are per-window and don't carry into a new one.
+    restore_material(&app);
 
     tracing::info!("opened window {label}");
     Ok(label)
@@ -577,4 +584,78 @@ pub fn quit_app(app: AppHandle, sessions: State<'_, Sessions>) {
     }
     tracing::info!("exiting on user request");
     app.exit(0);
+}
+
+// --- appearance -------------------------------------------------------------
+//
+// Font, cursor and window material, shared by every terminal. Two halves: the
+// values the frontend reads to configure xterm and the CSS, and the window
+// effect, which only the backend can apply.
+
+/// Apply the window material to every open window.
+///
+/// Acrylic is a property of the OS window, not of the page inside it, so it
+/// cannot be done from CSS. Applied to all windows rather than the calling one:
+/// the appearance is global, and a second window left opaque while the first
+/// went frosted would look like a bug.
+fn apply_material(app: &AppHandle, appearance: &shaman_core::Appearance) {
+    use tauri::window::{Effect, EffectsBuilder};
+    use tauri::Manager;
+
+    let effects = match appearance.material {
+        shaman_core::Material::Acrylic => {
+            Some(EffectsBuilder::new().effect(Effect::Acrylic).build())
+        }
+        // `None` clears whatever was applied before, so turning the toggle off
+        // actually removes the blur rather than leaving it stuck on.
+        shaman_core::Material::None => None,
+    };
+
+    for (label, window) in app.webview_windows() {
+        if let Err(e) = window.set_effects(effects.clone()) {
+            // Not fatal: the opacity half still works, and an unsupported
+            // material should cost the blur, not the settings dialog.
+            tracing::warn!(target: "shaman::ui", "set_effects on {label} failed: {e}");
+        }
+    }
+}
+
+#[tauri::command]
+pub fn appearance() -> Result<shaman_core::Appearance, String> {
+    shaman_core::settings::load().map_err(|e| e.to_string())
+}
+
+/// Store the appearance and apply the parts the backend owns.
+///
+/// Returns what was actually written: the store clamps font size and opacity,
+/// so the dialog must render the stored value rather than the one it sent.
+#[tauri::command]
+pub fn set_appearance(
+    app: AppHandle,
+    appearance: shaman_core::Appearance,
+) -> Result<shaman_core::Appearance, String> {
+    let stored = shaman_core::settings::save(&appearance).map_err(|e| e.to_string())?;
+    apply_material(&app, &stored);
+
+    tracing::info!(
+        target: "shaman::ui",
+        "APPEARANCE font={:?} {}px cursor={:?} opacity={} material={:?}",
+        stored.font_family,
+        stored.font_size,
+        stored.cursor_shape,
+        stored.background_opacity,
+        stored.material,
+    );
+    Ok(stored)
+}
+
+/// Re-apply the stored material to a window that has just been created.
+///
+/// Window effects are per-window and do not survive into a new one, so File →
+/// New Window would otherwise open opaque while the first window stayed frosted.
+pub fn restore_material(app: &AppHandle) {
+    match shaman_core::settings::load() {
+        Ok(appearance) => apply_material(app, &appearance),
+        Err(e) => tracing::warn!(target: "shaman::ui", "could not read settings: {e}"),
+    }
 }

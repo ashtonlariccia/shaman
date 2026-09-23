@@ -12,7 +12,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::vault::data_dir;
+use crate::vault::{data_dir, strip_bom};
 use crate::{Error, Result};
 
 const FILE: &str = "pins.json";
@@ -58,7 +58,7 @@ impl Store {
     pub fn load() -> Result<Self> {
         let path = data_dir()?.join(FILE);
         match std::fs::read_to_string(&path) {
-            Ok(text) => serde_json::from_str(&text).map_err(|e| {
+            Ok(text) => serde_json::from_str(strip_bom(&text)).map_err(|e| {
                 Error::Other(anyhow::anyhow!(
                     "{} is corrupt ({e}); move it aside to start fresh",
                     path.display()

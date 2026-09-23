@@ -18,6 +18,7 @@ pub mod pty;
 pub mod pump;
 pub mod registry;
 pub mod session;
+pub mod settings;
 pub mod ssh;
 pub mod vault;
 pub mod win;
@@ -32,6 +33,7 @@ pub use pty::{PtyOptions, PtySession};
 pub use pump::CoalesceConfig;
 pub use registry::{Registry, SessionSummary};
 pub use session::{Session, SessionId, SessionKind};
+pub use settings::{Appearance, CursorShape, Material};
 pub use ssh::{DiscoveredKey, SshAuth, SshError, SshFailure, SshOptions, SshSession};
 pub use win::harden_dll_search;
 
