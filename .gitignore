@@ -1,0 +1,12 @@
+/target
+/dist
+node_modules/
+
+# Tauri codegen
+crates/shaman-app/gen/
+
+# Local secrets / vault fixtures — never commit
+*.vault
+.env
+.env.*
+binaries/

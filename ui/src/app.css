@@ -1,0 +1,98 @@
+/* Catppuccin Charcoal.
+   Taken from the VSCode theme of the same name so Shaman sits beside the
+   editor without clashing. Accent is Mocha Mauve (#cba6f7).
+
+   Surfaces are layered exactly as VSCode layers them — editor darkest, sidebar
+   a step up, title bar a step above that — which is what keeps the regions
+   readable as separate panes. */
+
+:root {
+  --bg: #242424; /* editor / terminal */
+  --bg-side: #262626; /* sidebar */
+  --bg-title: #2d2d2d; /* title bar */
+  --bg-menu: #2a2a2a; /* dropdown surfaces */
+  --bg-input: #2f2f2f;
+
+  --border: #383838;
+  --border-input: #4a4a4a;
+
+  --fg: #d8d8d8;
+  --fg-dim: #a3a3a3;
+  --fg-faint: #5c5c5c;
+
+  --accent: #cba6f7; /* mauve */
+  --accent-ink: #1c1c1c; /* text on an accent-filled button */
+  --danger: #f38ba8;
+  --ok: #a6e3a1;
+
+  /* Session kind, colour-coded everywhere it appears: sidebar dots, menu
+     entries, the pinned strip, the connect and manage dialogs. Catppuccin
+     Mocha blue/red/mauve, matching the ANSI palette xterm is given in
+     TerminalView — so a blue tab and blue terminal text mean the same blue.
+
+     The rule is one colour per kind, used only for that kind. Mauve doubles as
+     the app accent, which is why remote is the one that gets it: a remote tab
+     and the app's own highlight reading alike is harmless, whereas a local tab
+     wearing the accent would be a false signal. */
+  --kind-local: #89b4fa; /* blue */
+  --kind-admin: #f38ba8; /* red — same as --danger, deliberately */
+  --kind-remote: #cba6f7; /* mauve — same as --accent, deliberately */
+
+  /* Washes for filled backgrounds (selected rows, hover on a coloured chip).
+     Kept in one place so the three stay in step with each other. */
+  --kind-local-soft: #89b4fa26;
+  --kind-admin-soft: #f38ba826;
+  --kind-remote-soft: #cba6f726;
+
+  /* Hover is a neutral white wash rather than a fixed grey: the surfaces range
+     from #242424 to #2d2d2d, and a fixed grey that reads on the sidebar is
+     nearly invisible on the lighter title bar. Selection tints with the accent,
+     as VSCode does. */
+  --hover: #ffffff16;
+  --hover-strong: #cba6f733;
+
+  /* Chips float inside their bar rather than touching its edges. */
+  --chip-radius: 5px;
+  --chip-inset: 3px;
+
+  color-scheme: dark;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 14px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  overflow: hidden;
+}
+
+/* Scrollbars, matched to the theme rather than left as bright Chromium defaults. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #5c5c5c40 transparent;
+}
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+*::-webkit-scrollbar-thumb {
+  background: #5c5c5c40;
+  border-radius: 5px;
+}
+*::-webkit-scrollbar-thumb:hover {
+  background: #5c5c5c66;
+}

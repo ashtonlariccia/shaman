@@ -1,0 +1,47 @@
+[package]
+name = "shaman-core"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+description = "UI-agnostic session engine for Shaman: PTY, SSH, elevation, and credential vault."
+
+# NOTE: this crate must never depend on tauri. Keeping it UI-agnostic is what
+# lets the frontend be replaced later without touching the hard logic.
+[dependencies]
+anyhow.workspace = true
+thiserror.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+
+# WezTerm's ConPTY layer — the most battle-tested Windows PTY in Rust.
+portable-pty = "0.9"
+getrandom = "0.4.3"
+# `ring` instead of the default `aws-lc-rs` backend: aws-lc-sys builds C sources
+# and needs NASM/cmake, which fails on this toolchain. ring ships prebuilt asm
+# and has no such requirement.
+russh = { version = "0.62", default-features = false, features = ["ring", "flate2", "rsa"] }
+tokio = { workspace = true, features = ["rt", "sync", "net", "time", "io-util", "macros"] }
+
+[target.'cfg(windows)'.dependencies]
+# WSL distros are enumerated from the registry rather than by parsing
+# `wsl -l -q`, whose output is UTF-16LE and mangles under naive decoding.
+windows-registry = "0.6"
+
+# Hand-rolling JOBOBJECT_EXTENDED_LIMIT_INFORMATION and friends is a memory-safety
+# hazard for no benefit; Phases 4-5 need tokens, named pipes and DPAPI from here too.
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  # CreateJobObjectW takes SECURITY_ATTRIBUTES, so JobObjects needs this too.
+  "Win32_Security",
+  "Win32_Security_AppLocker",
+  "Win32_Security_Cryptography",
+  "Win32_Security_Authorization",
+  "Win32_System_JobObjects",
+  "Win32_System_Threading",
+  "Win32_UI_WindowsAndMessaging",
+] }
+
+[dev-dependencies]
+rand = "0.10.2"

@@ -1,0 +1,7 @@
+# Authored from WSL, compiled by Windows tooling. Normalize to LF in the repo
+# and let Windows checkouts decide, so the two toolchains stop fighting.
+* text=auto eol=lf
+
+*.png binary
+*.ico binary
+*.icns binary
