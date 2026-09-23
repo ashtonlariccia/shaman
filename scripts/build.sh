@@ -4,4 +4,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-exec cmd.exe /c "npm run tauri -- build"
+# shellcheck source=scripts/_npm.sh
+source "$(dirname "$0")/_npm.sh"
+
+npm_run run tauri -- build

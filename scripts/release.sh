@@ -9,6 +9,9 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# shellcheck source=scripts/_npm.sh
+source "$(dirname "$0")/_npm.sh"
+
 # The helper must sit beside shaman.exe: an elevated Shaman cannot open an
 # ordinary terminal without it. `tauri build` only builds the app crate.
 echo "==> building shaman-helper"
@@ -23,9 +26,9 @@ mkdir -p crates/shaman-app/binaries
 cp target/release/shaman-helper.exe "crates/shaman-app/binaries/shaman-helper-${TRIPLE}.exe"
 
 if [[ "${1:-}" == "--bundle" ]]; then
-  cmd.exe /c "npm run tauri -- build"
+  npm_run run tauri -- build
 else
-  cmd.exe /c "npm run tauri -- build --no-bundle"
+  npm_run run tauri -- build --no-bundle
 fi
 
 if [[ ! -f target/release/shaman-helper.exe ]]; then

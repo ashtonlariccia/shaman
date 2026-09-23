@@ -7,7 +7,10 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
+# shellcheck source=scripts/_npm.sh
+source "$(dirname "$0")/_npm.sh"
+
 echo "==> starting Shaman dev (Windows toolchain via WSL interop)"
 echo "    a window will open on the Windows desktop and take focus"
 
-exec cmd.exe /c "npm run tauri -- dev"
+npm_run run tauri -- dev
