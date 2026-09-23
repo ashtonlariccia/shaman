@@ -8,7 +8,7 @@
   import ManageConnections from "./lib/ManageConnections.svelte";
   import PinBar from "./lib/PinBar.svelte";
   import SaveToast from "./lib/SaveToast.svelte";
-  import Sidebar from "./lib/Sidebar.svelte";
+  import Sidebar, { RAIL_WIDTH } from "./lib/Sidebar.svelte";
   import SidebarResizer from "./lib/SidebarResizer.svelte";
   import TerminalView from "./lib/TerminalView.svelte";
   import TitleBar from "./lib/TitleBar.svelte";
@@ -38,8 +38,13 @@
   let hostKeysOpen = $state(false);
   let appearanceOpen = $state(false);
 
+  // `sidebarWidth` stays the *expanded* width while collapsed, so expanding
+  // returns to the width you dragged rather than a default.
   let sidebarWidth = $state(230);
+  let sidebarCollapsed = $state(false);
   let resizing = $state(false);
+
+  const effectiveSidebarWidth = $derived(sidebarCollapsed ? RAIL_WIDTH : sidebarWidth);
 
   // --- opening terminals ----------------------------------------------------
 
@@ -264,16 +269,22 @@
     <Sidebar
       slots={sessions.slots}
       activeKey={sessions.activeKey}
-      width={sidebarWidth}
+      width={effectiveSidebarWidth}
+      collapsed={sidebarCollapsed}
       onselect={(key) => sessions.select(key)}
       onclose={(key) => void sessions.close(key)}
+      ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)}
     />
 
-    <SidebarResizer
-      width={sidebarWidth}
-      onresize={(w) => (sidebarWidth = w)}
-      ondragging={(d) => (resizing = d)}
-    />
+    <!-- No handle while collapsed: the rail has one width, and a drag that
+         silently expanded it would fight the toggle. -->
+    {#if !sidebarCollapsed}
+      <SidebarResizer
+        width={sidebarWidth}
+        onresize={(w) => (sidebarWidth = w)}
+        ondragging={(d) => (resizing = d)}
+      />
+    {/if}
 
     <section class="stage">
       {#each sessions.slots as slot (slot.key)}
