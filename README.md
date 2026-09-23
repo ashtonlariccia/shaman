@@ -244,11 +244,27 @@ Already present on the current dev machine:
 - Node.js 20+
 - WebView2 runtime (ships with Windows 11)
 
-## Icons
+## Icons and artwork
 
-`crates/shaman-app/icons/source.png` is a generated placeholder. Regenerate the
-icon set after replacing it:
+Two source files, and they are not interchangeable:
+
+| File | What it is |
+|---|---|
+| `icons/source.png` | The original full trident-and-waves artwork, 1024². The master — everything else is cut from it. |
+| `icons/source-waves.png` | Just the two waves, centred on a square canvas. **This is what the app icon is generated from.** |
+| `ui/src/lib/wave-mark.png` | The same waves, as the title-bar mark. |
+| `ui/src/lib/waves.txt` | The same waves again, as 150×27 ASCII, for the empty-stage watermark. |
+
+Regenerate the icon set after changing the square source:
 
 ```bash
-cmd.exe /c "npm run tauri -- icon crates/shaman-app/icons/source.png -o crates/shaman-app/icons"
+npm.cmd run tauri -- icon crates/shaman-app/icons/source-waves.png -o crates/shaman-app/icons
 ```
+
+That command also writes `android/` and `ios/` directories. This project targets
+neither — delete them, or they turn up as untracked clutter on the next
+`git status`.
+
+The mark is roughly 2.9:1, so in a square icon it is necessarily a band across
+the middle: legible at 128px, thin at 32px. Filling the square would mean
+distorting it.

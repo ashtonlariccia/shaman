@@ -35,14 +35,36 @@
        as texture rather than as characters, and at this size it sits behind
        the empty stage instead of filling it. The 12px cap keeps it modest on
        a large monitor rather than growing to match. */
-    font-size: clamp(3px, min(3vh, 0.7vw), 12px);
+    font-size: clamp(3px, min(2.4vh, 0.55vw), 10px);
     /* 1.0 keeps the character cell close to a terminal's aspect ratio; anything
        taller stretches the drawing vertically. */
     line-height: 1;
     white-space: pre;
-    /* Mocha mauve, dimmed so it reads as a watermark rather than a billboard. */
-    color: var(--accent);
-    opacity: 0.55;
+
+    /* The same blue -> lavender -> coral run as the mark in the title bar,
+       sampled from it, so the two read as one logo rather than two. Painted
+       through the glyphs with background-clip, which keeps the ASCII texture
+       instead of replacing it with the image.
+
+       `color: transparent` is what lets the gradient show; without it the
+       text paints over its own background. */
+    background: linear-gradient(
+      95deg,
+      #6cb2e8 0%,
+      #8fb8ea 20%,
+      #cbbdff 50%,
+      #ef909c 78%,
+      #ee7487 100%
+    );
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+
+    /* Dimmed so it reads as a watermark rather than a billboard -- but the
+       blue end of the gradient is close in value to the terminal background,
+       so it cannot go as low as the flat mauve version did before the left
+       wave disappears into the surface. */
+    opacity: 0.62;
     user-select: none;
   }
 </style>
