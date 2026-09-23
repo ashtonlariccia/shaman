@@ -271,6 +271,7 @@
       activeKey={sessions.activeKey}
       width={effectiveSidebarWidth}
       collapsed={sidebarCollapsed}
+      {resizing}
       onselect={(key) => sessions.select(key)}
       onclose={(key) => void sessions.close(key)}
       ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)}
@@ -286,7 +287,9 @@
       />
     {/if}
 
-    <section class="stage">
+    <!-- The resizer normally provides the gap on this side; collapsed, it is
+         not rendered, so the stage supplies its own. -->
+    <section class="stage" class:railed={sidebarCollapsed}>
       {#each sessions.slots as slot (slot.key)}
         <TerminalView
           profileId={slot.profileId}
@@ -390,14 +393,36 @@
     user-select: none;
   }
 
-  /* The painted surface for the terminal area, rather than each TerminalView:
-     it covers the pane's padding too, so a translucent window has no
-     see-through gutter framing every terminal. */
+  /* The one bordered thing in the window. The chrome around it is seamless, so
+     this line is what separates "the app" from "what the app is showing" --
+     the same trick a browser plays with its content area.
+     
+     It is also the painted surface for the terminal area, rather than each
+     TerminalView: it covers the pane's padding too, so a translucent window
+     has no see-through gutter framing every terminal. */
   .stage {
     position: relative;
     flex: 1;
     min-width: 0;
     min-height: 0;
+    margin: var(--viewport-inset) var(--viewport-inset) var(--viewport-inset) 0;
     background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--viewport-radius);
+    transition: margin-left 170ms cubic-bezier(0.2, 0.7, 0.3, 1);
+    /* Keeps the terminal inside the rounded corners. Safe here, unlike on the
+       sidebar: nothing in the stage needs to escape it, and the menus that
+       once got clipped live in the title bar. */
+    overflow: hidden;
+  }
+
+  .stage.railed {
+    margin-left: var(--viewport-inset);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stage {
+      transition: none;
+    }
   }
 </style>

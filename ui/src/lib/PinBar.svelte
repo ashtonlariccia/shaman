@@ -226,8 +226,7 @@
     align-items: center;
     height: 24px;
     flex: none;
-    background: var(--bg-title);
-    border-top: 1px solid var(--border);
+    background: var(--bg-chrome);
     padding: 0 0.2rem;
     user-select: none;
     overflow: hidden;

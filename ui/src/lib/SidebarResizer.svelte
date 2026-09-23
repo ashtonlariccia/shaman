@@ -75,15 +75,14 @@
 ></div>
 
 <style>
-  /* The grab area stays 6px wide -- a 1px target is miserable to hit -- but the
-     *visible* indicator is a hairline drawn by the pseudo-element, so hovering
-     doesn't paint a thick slab down the edge. */
+  /* Doubles as the gap between the chrome and the viewport card, so the grab
+     area costs no space of its own. Wide enough to hit; the *visible*
+     indicator is only a hairline drawn by the pseudo-element, so hovering
+     doesn't paint a slab down the edge. */
   .resizer {
     position: relative;
     flex: none;
-    width: 6px;
-    margin-left: -3px;
-    margin-right: -3px;
+    width: var(--viewport-inset);
     z-index: 5;
     cursor: col-resize;
     background: transparent;

@@ -18,15 +18,18 @@
     activeKey: number | null;
     width: number;
     collapsed: boolean;
+    /** A drag is in flight, so the width must track the pointer, not glide. */
+    resizing: boolean;
     onselect: (key: number) => void;
     onclose: (key: number) => void;
     ontoggle: () => void;
   };
 
-  let { slots, activeKey, width, collapsed, onselect, onclose, ontoggle }: Props = $props();
+  let { slots, activeKey, width, collapsed, resizing, onselect, onclose, ontoggle }: Props =
+    $props();
 </script>
 
-<aside style="width: {width}px" class:collapsed>
+<aside style="width: {width}px" class:collapsed class:resizing>
   <ul>
     {#each slots as slot (slot.key)}
       {@const kind = slotKind(slot)}
@@ -102,12 +105,24 @@
     display: flex;
     flex-direction: column;
     /* Darkest surface in the app, so it recedes behind the terminal. */
-    background: var(--bg-side);
-    border-right: 1px solid var(--border);
+    background: var(--bg-chrome);
     min-height: 0;
+    transition: width 170ms cubic-bezier(0.2, 0.7, 0.3, 1);
     /* NOTE: no overflow here. `overflow` creates a clipping context, which is
        what was cutting off menus that extended past the sidebar. Scrolling
        belongs on the list itself. */
+  }
+
+  /* Dragging the handle sets the width every pointer move; easing each one
+     would make the sidebar lag behind the cursor. */
+  aside.resizing {
+    transition: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    aside {
+      transition: none;
+    }
   }
 
   ul {
@@ -212,7 +227,6 @@
        the only thing that looks deliberate. */
     justify-content: flex-start;
     padding: 0.25rem 0.35rem;
-    border-top: 1px solid var(--border);
   }
   .collapsed footer {
     justify-content: center;
