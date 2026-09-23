@@ -4,27 +4,6 @@
 
 mod commands;
 
-use serde::Serialize;
-
-#[derive(Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AppInfo {
-    version: &'static str,
-    core: String,
-    elevated: bool,
-}
-
-/// Phase 0 smoke command: proves the IPC bridge is wired end to end.
-#[tauri::command]
-fn app_info() -> AppInfo {
-    AppInfo {
-        version: env!("CARGO_PKG_VERSION"),
-        core: shaman_core::Version.to_string(),
-        // Real detection lands in Phase 4 alongside the elevation work.
-        elevated: false,
-    }
-}
-
 /// Frontend liveness beacon.
 ///
 /// WebView2 renders in a separate process, so `PrintWindow` captures the host
@@ -83,7 +62,10 @@ fn message_box(caption: &str, text: &str) {
     }
 
     fn wide(s: &str) -> Vec<u16> {
-        std::ffi::OsStr::new(s).encode_wide().chain(once(0)).collect()
+        std::ffi::OsStr::new(s)
+            .encode_wide()
+            .chain(once(0))
+            .collect()
     }
 
     const MB_ICONERROR: u32 = 0x10;
@@ -128,10 +110,8 @@ fn main() {
         })
         .manage(commands::Sessions::default())
         .invoke_handler(tauri::generate_handler![
-            app_info,
             ui_ready,
             commands::list_profiles,
-            commands::app_elevated,
             commands::new_window,
             commands::session_open,
             commands::ssh_connect,
@@ -153,7 +133,6 @@ fn main() {
             commands::session_write,
             commands::session_resize,
             commands::session_close,
-            commands::session_list,
             commands::quit_app,
         ])
         .run(tauri::generate_context!())

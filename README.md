@@ -16,8 +16,8 @@ privileges, so *ordinary* terminals have to be pushed back down. They are hosted
 by `shaman-helper.exe`, which the app launches at medium integrity using the
 desktop shell's token. The helper must sit beside `shaman.exe`.
 
-Verified by `crates/shaman-core/examples/spike_helper.rs` (run elevated):
-in-process tabs report **High** integrity, helper-hosted tabs report **Medium**.
+Verified by spike when the model was built (see `PLAN.md` §4): in-process tabs
+report **High** integrity, helper-hosted tabs report **Medium**.
 
 Debug builds stay `asInvoker` so routine dev cycles don't fire UAC; admin tabs
 refuse to open there, with an explanation.

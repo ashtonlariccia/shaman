@@ -4,8 +4,8 @@
 //! prompt. That inverts the usual problem — *ordinary* terminals then have to be
 //! pushed back to normal integrity, or every tab would silently be admin.
 //!
-//! The strategy here was chosen by experiment, not by documentation. See
-//! `examples/spike_deelevate.rs` and `PLAN.md` §4:
+//! The strategy here was chosen by experiment, not by documentation. The
+//! spike that settled it is gone; its results are recorded in `PLAN.md` §4:
 //!
 //!   * `TokenLinkedToken` — the answer most write-ups give — cannot produce a
 //!     primary token without `SeTcbPrivilege`, which admins lack. Fails with
@@ -100,7 +100,9 @@ mod imp {
             let mut pid = 0u32;
             GetWindowThreadProcessId(hwnd, Some(&mut pid));
             if pid == 0 {
-                return Err(std::io::Error::other("could not identify the shell process"));
+                return Err(std::io::Error::other(
+                    "could not identify the shell process",
+                ));
             }
 
             let shell = OpenProcess(PROCESS_QUERY_INFORMATION, false, pid)

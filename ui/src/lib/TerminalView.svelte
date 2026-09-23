@@ -44,13 +44,6 @@
   let fit: FitAddon | undefined;
   let sessionId: number | null = null;
 
-  // Dev-only proof the full loop works: JS -> ConPTY -> channel -> xterm. The
-  // marker appears twice (echoed input, then output), so >= 2 means the shell
-  // really executed it rather than merely echoing.
-  let probeSeen = 0;
-  let probeDone = false;
-  const PROBE = "shaman-pty-ok";
-
   function syncSize() {
     if (!term || !fit || sessionId === null) return;
     // A hidden element measures as zero; fitting then would corrupt the size.
@@ -231,14 +224,6 @@
           ? new Uint8Array(message)
           : Uint8Array.from(message as number[]);
       t.write(bytes);
-
-      if (import.meta.env.DEV && !probeDone) {
-        probeSeen += (new TextDecoder().decode(bytes).match(new RegExp(PROBE, "g")) ?? []).length;
-        if (probeSeen >= 2) {
-          probeDone = true;
-          void invoke("ui_ready", { detail: `PTY_OK marker seen ${probeSeen}x` });
-        }
-      }
     };
 
     (async () => {
@@ -277,9 +262,6 @@
         });
 
         if (active) t.focus();
-        if (import.meta.env.DEV && !ssh) {
-          void invoke("session_write", { id, data: `echo ${PROBE}\r` });
-        }
       } catch (e) {
         // ssh_connect rejects with a structured { kind, message, fingerprint };
         // local shells reject with a plain string.

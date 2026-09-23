@@ -188,8 +188,8 @@ Admin sessions skip the helper entirely and spawn ConPTYs in-process.
 
 ### Spike results (run 2026-08-08, elevated)
 
-`crates/shaman-core/examples/spike_deelevate.rs` tested three strategies. The
-textbook answer lost:
+A throwaway spike tested three strategies against a live elevated process.
+The textbook answer lost:
 
 | Strategy | Result |
 |---|---|

@@ -22,13 +22,13 @@
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 
+use serde::Deserialize;
 use shaman_core::proto::OpenRequest;
 use shaman_core::{
     profiles, ConnectionStore, DiscoveredKey, Helper, KnownHosts, Pin, PinKind, PinStore,
-    PtyOptions, PtySession, Registry, SavedConnection, Session, SessionId, SessionSummary,
-    ShellProfile, SshAuth, SshError, SshFailure, SshOptions, SshSession, TrustedHost,
+    PtyOptions, PtySession, Registry, SavedConnection, Session, SessionId, ShellProfile, SshAuth,
+    SshError, SshFailure, SshOptions, SshSession, TrustedHost,
 };
-use serde::Deserialize;
 use tauri::ipc::{Channel, InvokeResponseBody};
 use tauri::{AppHandle, Emitter, State};
 
@@ -79,12 +79,6 @@ fn helper_path() -> Result<PathBuf, String> {
 #[tauri::command]
 pub fn list_profiles() -> Vec<ShellProfile> {
     profiles::detect()
-}
-
-/// Whether Shaman itself is running elevated.
-#[tauri::command]
-pub fn app_elevated() -> bool {
-    shaman_core::is_elevated()
 }
 
 /// Open another Shaman window (File -> New Window).
@@ -175,9 +169,9 @@ pub fn session_open(
     } else if elevated_app {
         // Ordinary tab while we are elevated: it must be pushed back down to
         // normal integrity, which only the helper can do.
-        let helper = sessions.helper().map_err(|e| {
-            format!("cannot open a normal terminal without the helper: {e}")
-        })?;
+        let helper = sessions
+            .helper()
+            .map_err(|e| format!("cannot open a normal terminal without the helper: {e}"))?;
 
         let request = OpenRequest {
             program: profile.program.clone(),
@@ -547,7 +541,10 @@ pub fn session_resize(
 /// Terminate a session and everything it spawned, then forget it.
 #[tauri::command]
 pub fn session_close(sessions: State<'_, Sessions>, id: u64) -> Result<(), String> {
-    let mut reg = sessions.registry.lock().map_err(|_| "session lock poisoned")?;
+    let mut reg = sessions
+        .registry
+        .lock()
+        .map_err(|_| "session lock poisoned")?;
 
     if let Some(mut session) = reg.remove(SessionId(id)) {
         // Best effort: even if the kill call fails, dropping the session closes
@@ -580,13 +577,4 @@ pub fn quit_app(app: AppHandle, sessions: State<'_, Sessions>) {
     }
     tracing::info!("exiting on user request");
     app.exit(0);
-}
-
-#[tauri::command]
-pub fn session_list(sessions: State<'_, Sessions>) -> Result<Vec<SessionSummary>, String> {
-    Ok(sessions
-        .registry
-        .lock()
-        .map_err(|_| "session lock poisoned")?
-        .list())
 }
