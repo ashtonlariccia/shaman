@@ -557,6 +557,16 @@ async fn establish(
         )
     })?;
 
+    // Best effort, and usually refused: sshd only forwards the variables its
+    // `AcceptEnv` lists, which on a stock config is `LANG` and `LC_*`. Sent
+    // anyway because it costs one packet on a host that does allow it, and the
+    // terminal answers the query form of the same question regardless (see
+    // `termQueries.ts`) -- that is the route that does not need the server's
+    // cooperation. `want_reply: false` so a refusal is not an error.
+    if let Err(err) = channel.set_env(false, "COLORTERM", "truecolor").await {
+        tracing::debug!("server would not take COLORTERM: {err}");
+    }
+
     channel
         .request_pty(
             true,

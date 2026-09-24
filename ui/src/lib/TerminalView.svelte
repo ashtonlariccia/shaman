@@ -8,6 +8,7 @@
 
   import type { TerminalApi } from "./terminalApi";
   import { CLEAR_LINE, lineEditorFor } from "./lineEditor";
+  import { installTerminalQueries } from "./termQueries";
 
   import type { SshRequest } from "./ConnectDialog.svelte";
   import { terminalTheme } from "./theme";
@@ -163,6 +164,11 @@
       if (sessionId !== null) void invoke("session_write", { id: sessionId, data });
     }
 
+    // Answer the terminal's own questions -- truecolor support and the default
+    // background -- which xterm.js either gets wrong or ignores. See
+    // termQueries.ts; without them a remote nvim paints in 256 colours.
+    const uninstallQueries = installTerminalQueries(t, toShell);
+
     function releaseEscape(send: boolean) {
       if (!escapeHeld) return;
       escapeHeld = false;
@@ -285,6 +291,7 @@
       clearTimeout(resizeTimer);
       clearTimeout(escapeTimer);
       host.removeEventListener("contextmenu", onContextMenu, { capture: true });
+      uninstallQueries();
       observer.disconnect();
       ongone?.();
       if (sessionId !== null) void invoke("session_close", { id: sessionId });

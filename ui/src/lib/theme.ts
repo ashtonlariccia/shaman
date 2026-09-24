@@ -16,6 +16,33 @@ import type { Appearance } from "./state/appearance.svelte";
 /** The editor surface, as `--bg` in app.css. */
 export const BACKGROUND = "#242424";
 
+/**
+ * The same colour, invisible.
+ *
+ * The alpha is what makes the terminal see-through: the WebGL renderer clears
+ * its canvas to this, and a cell using the default background is never painted
+ * at all, so the chrome behind shows through. That much only needs the `00`.
+ *
+ * The **RGB still has to be right**, because of a bug in the WebGL addon. It
+ * decides whether a cell needs a background rectangle with `bg !== 0` against
+ * the whole packed attribute word -- and that word carries the style flags,
+ * not just the colour. Italic, dim, overline, and any underline style or
+ * colour each set a bit in it. So a styled cell on a *default* background is
+ * judged to need a rectangle, which `_updateRectangle` then fills with this
+ * colour and `alpha = 1`, hardcoded.
+ *
+ * With `#00000000` that rectangle is opaque black, and every italic word and
+ * every squiggle-underlined diagnostic in a full-screen program wears a black
+ * box. With the real surface colour it is painted the colour it is sitting on,
+ * and nobody can tell it was drawn. Any terminal whose background is opaque
+ * has been getting away with this for free.
+ *
+ * The rectangle stays opaque below 100% opacity, so a styled run is a slightly
+ * more solid patch on a translucent window. That is the residue of the bug we
+ * cannot reach from here; it is not visible at 100%.
+ */
+const TRANSPARENT_BACKGROUND = `${BACKGROUND}00`;
+
 const ANSI: ITheme = {
   foreground: "#d8d8d8",
   selectionBackground: "#cba6f733",
@@ -40,14 +67,16 @@ const ANSI: ITheme = {
 export function terminalTheme(appearance: Appearance): ITheme {
   return {
     ...ANSI,
-    // Fully transparent, always -- the `.stage` behind it is what carries the
+    // Transparent, always -- the `.stage` behind it is what carries the
     // opacity. If both did, the terminal would end up more opaque than the
     // sidebar beside it at the same setting.
     //
     // Only the *default* background goes transparent. Cells a program has
     // coloured itself keep their own background, which is what you want: a
     // `ls` listing stays readable through a translucent window.
-    background: "#00000000",
+    //
+    // Transparent, but not colourless -- see TRANSPARENT_BACKGROUND.
+    background: TRANSPARENT_BACKGROUND,
     cursor: appearance.cursorColor,
     // The glyph under a block cursor. Opaque on purpose: the cursor has to
     // stay legible against whatever is showing through the window.

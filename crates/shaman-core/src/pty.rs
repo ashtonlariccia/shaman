@@ -100,6 +100,30 @@ impl PtySession {
             builder.cwd(cwd);
         }
 
+        // Say that this terminal draws 24-bit colour.
+        //
+        // Nothing else advertises it. The terminfo name a program falls back on
+        // is `xterm-256color`, which carries no `RGB` capability, so without
+        // this a modern colourscheme quietly drops to its 256-colour
+        // approximations -- which is what turns an indent guide into a
+        // near-black block. The terminal also answers the query form (see
+        // `termQueries.ts`); this is the half that costs nothing.
+        builder.env("COLORTERM", "truecolor");
+
+        // WSL does not inherit the Windows environment. `WSLENV` names the
+        // variables that cross, `/u` meaning "on the way in only". Appended to
+        // whatever is already there rather than replacing it, so a machine that
+        // shares other variables with its distros keeps doing so.
+        let existing = std::env::var("WSLENV").unwrap_or_default();
+        let mut shared: Vec<&str> = existing.split(':').filter(|e| !e.is_empty()).collect();
+        if !shared
+            .iter()
+            .any(|e| e.split('/').next() == Some("COLORTERM"))
+        {
+            shared.push("COLORTERM/u");
+        }
+        builder.env("WSLENV", shared.join(":"));
+
         let mut child = pair.slave.spawn_command(builder)?;
 
         // Contain the shell so its descendants die with it. There is a small
