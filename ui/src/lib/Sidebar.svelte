@@ -1,7 +1,8 @@
 <script lang="ts">
   import KindIcon from "./KindIcon.svelte";
-  import { KIND_TITLE, slotKind } from "./kinds";
+  import { KIND_TITLE, slotKind, type Kind } from "./kinds";
   import type { Slot } from "./slots";
+  import type { TabDrag } from "./state/tabDrag.svelte";
 
   type Props = {
     slots: Slot[];
@@ -10,40 +11,168 @@
     collapsed: boolean;
     /** A drag is in flight, so the width must track the pointer, not glide. */
     resizing: boolean;
+    /** Dragging a terminal out of the list, possibly into another window. */
+    drag: TabDrag;
     onselect: (key: number) => void;
     onclose: (key: number) => void;
     ontoggle: () => void;
+    /** The drag was released; the destination is the drag's to report. */
+    ondrop: () => void;
+    /** Right-click on a row. App owns the menu, so only one is ever open. */
+    oncontext: (event: MouseEvent, slot: Slot) => void;
   };
 
-  let { slots, activeKey, width, collapsed, resizing, onselect, onclose, ontoggle }: Props =
-    $props();
+  let {
+    slots,
+    activeKey,
+    width,
+    collapsed,
+    resizing,
+    drag,
+    onselect,
+    onclose,
+    ontoggle,
+    ondrop,
+    oncontext,
+  }: Props = $props();
+
+  // --- hover card ------------------------------------------------------------
+  //
+  // Not a `title` attribute. The native tooltip is a yellow-white system chip
+  // that arrives after a second or so, ignores the theme, and — collapsed —
+  // is the *only* thing naming the terminal, which is too important a job for
+  // a control the app cannot style.
+  //
+  // Rendered fixed and outside the `<aside>`, because the list scrolls, and
+  // `overflow` on the list clips anything that tries to sit beside a row.
+
+  /** Long enough that sweeping down the list doesn't flash a card per row. */
+  const HOVER_DELAY_MS = 260;
+
+  let aside = $state<HTMLElement | undefined>();
+  let tip = $state<{ title: string; kind: Kind; x: number; y: number } | null>(null);
+  let tipTimer: ReturnType<typeof setTimeout> | undefined;
+
+  function showTipSoon(event: MouseEvent, slot: Slot) {
+    const row = event.currentTarget as HTMLElement;
+    clearTimeout(tipTimer);
+    tipTimer = setTimeout(() => {
+      // A drag started during the delay: the ghost is already carrying the
+      // terminal's name, and a card as well would be two labels for one thing.
+      if (drag.active) return;
+      const box = row.getBoundingClientRect();
+      const rail = aside?.getBoundingClientRect();
+      tip = {
+        title: slot.title,
+        kind: slotKind(slot),
+        // Beside the sidebar rather than beside the row: rows are inset, and a
+        // card that tracked them would step in and out as the list scrolled.
+        x: (rail?.right ?? box.right) + 6,
+        y: box.top + box.height / 2,
+      };
+    }, HOVER_DELAY_MS);
+  }
+
+  function hideTip() {
+    clearTimeout(tipTimer);
+    tip = null;
+  }
+
+  // Don't leave a card scheduled for a sidebar that is being torn down.
+  $effect(() => () => clearTimeout(tipTimer));
+
+  // --- dragging a terminal out ----------------------------------------------
+  //
+  // Pointer events rather than HTML5 drag-and-drop, for the same reason the pin
+  // strip uses them -- the window's OS-level drag-drop handler swallows
+  // `dragstart` inside the webview -- and for one more: this drag is allowed to
+  // leave the window entirely, which `dragstart` could never do.
+
+  /** Set for the duration of one click, so a finished drag doesn't also select. */
+  let dragged = false;
+
+  function onPointerDown(event: PointerEvent, slot: Slot) {
+    // Any press ends the hover: the card described a resting pointer, and the
+    // press means something is about to happen to the row underneath it.
+    hideTip();
+    // Left button only. A tab still connecting has no session to move.
+    if (event.button !== 0 || slot.sessionId === null) return;
+    // The kill button lives inside the row, so a press on it reaches here too;
+    // it means close, not drag.
+    if (event.target instanceof Element && event.target.closest(".kill")) return;
+    dragged = false;
+    // Capture is what lets the pointer leave the row, the sidebar and the
+    // window without the drag ending. Not fatal if it is refused -- the drag
+    // just stops early -- so the press still stands.
+    try {
+      (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    } catch {
+      /* no capture available for this pointer */
+    }
+    drag.begin(slot.key, slot.title, event);
+  }
+
+  function onPointerMove(event: PointerEvent) {
+    drag.move(event);
+  }
+
+  function onPointerUp() {
+    if (drag.active) dragged = true;
+    ondrop();
+  }
+
+  /** A drag that ends on the row it started on must not also count as a click. */
+  function onRowClick(key: number) {
+    if (dragged) {
+      dragged = false;
+      return;
+    }
+    onselect(key);
+  }
 </script>
 
-<aside style="width: {width}px" class:collapsed class:resizing>
-  <ul>
+<aside style="width: {width}px" class:collapsed class:resizing bind:this={aside}>
+  <!-- Scrolling moves every row out from under its card. -->
+  <ul onscroll={hideTip}>
     {#each slots as slot (slot.key)}
       {@const kind = slotKind(slot)}
       <li>
-        <!-- Collapsed, the name is off the screen, so the tooltip has to carry
-             it -- otherwise the rail is a column of anonymous glyphs. -->
+        <!-- Collapsed, the name is off the screen, so the hover card has to
+             carry it -- otherwise the rail is a column of anonymous glyphs. -->
         <div
           class="row"
           class:active={slot.key === activeKey}
+          class:lifted={drag.active && drag.key === slot.key}
           data-kind={kind}
           role="button"
           tabindex="0"
-          title={collapsed ? `${slot.title} — ${KIND_TITLE[kind]}` : KIND_TITLE[kind]}
-          onclick={() => onselect(slot.key)}
+          onclick={() => onRowClick(slot.key)}
           onkeydown={(e) => (e.key === "Enter" || e.key === " ") && onselect(slot.key)}
+          oncontextmenu={(e) => {
+            // Stopped, not merely defaulted: the window-level handler in App
+            // opens the plain menu, and this row wants the one with Close on it.
+            e.preventDefault();
+            e.stopPropagation();
+            hideTip();
+            oncontext(e, slot);
+          }}
+          onmouseenter={(e) => showTipSoon(e, slot)}
+          onmouseleave={hideTip}
+          onpointerdown={(e) => onPointerDown(e, slot)}
+          onpointermove={onPointerMove}
+          onpointerup={onPointerUp}
+          onpointercancel={() => drag.cancel()}
         >
           {#if collapsed}
             <KindIcon {kind} size={13} />
           {:else}
             <span class="dot"></span>
             <span class="label">{slot.title}</span>
+            <!-- aria-label, not `title`: a native tooltip here would fight the
+                 hover card the row is already showing. -->
             <button
               class="kill"
-              title="Kill terminal"
+              aria-label="Kill terminal"
               onclick={(e) => {
                 e.stopPropagation();
                 onclose(slot.key);
@@ -86,6 +215,23 @@
     </button>
   </footer>
 </aside>
+
+{#if tip}
+  <!-- Centred on the row it describes, clamped so a row near the bottom of a
+       full list still gets a card that is entirely on screen. -->
+  <div
+    class="tip"
+    data-kind={tip.kind}
+    role="tooltip"
+    style="left: {tip.x}px; top: {Math.min(Math.max(tip.y, 20), window.innerHeight - 20)}px"
+  >
+    <span class="tip-dot"></span>
+    <span class="tip-text">
+      <span class="tip-name">{tip.title}</span>
+      <span class="tip-kind">{KIND_TITLE[tip.kind]}</span>
+    </span>
+  </div>
+{/if}
 
 <style>
   aside {
@@ -155,6 +301,12 @@
 
   .row:hover {
     background: var(--hover);
+  }
+
+  /* The row being dragged stays in place but recedes, so the list keeps its
+     shape while the ghost carries the terminal. */
+  .row.lifted {
+    opacity: 0.35;
   }
 
   /* Selection is tinted with the row's own kind rather than one shared accent,
@@ -241,5 +393,80 @@
     outline: 1px solid var(--accent);
     outline-offset: -1px;
     color: var(--fg);
+  }
+
+  /* --- hover card --------------------------------------------------------- */
+
+  /* Same surface as the menus, and opaque for the same reason they are: a card
+     you can read the terminal through is not a card. It sits below the context
+     menu's layer so the two never stack. */
+  .tip {
+    --kind: var(--kind-local);
+    position: fixed;
+    z-index: 1400;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    max-width: 320px;
+    padding: 0.35rem 0.55rem;
+    background: var(--bg-menu);
+    border: 1px solid var(--border);
+    border-radius: var(--chip-radius);
+    box-shadow: 0 6px 18px #0009;
+    pointer-events: none;
+    /* Appears rather than pops. The delay already did the waiting; this is
+       just so it doesn't snap into existence at full contrast. */
+    animation: tip-in 110ms ease-out;
+  }
+  .tip[data-kind="admin"] {
+    --kind: var(--kind-admin);
+  }
+  .tip[data-kind="remote"] {
+    --kind: var(--kind-remote);
+  }
+
+  @keyframes tip-in {
+    from {
+      opacity: 0;
+      transform: translateY(-50%) translateX(-3px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tip {
+      animation: none;
+    }
+  }
+
+  /* The same dot the row carries, so the card is visibly *that* row's. */
+  .tip-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--kind);
+    flex: none;
+  }
+
+  .tip-text {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+  }
+
+  .tip-name {
+    font-size: 0.8rem;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  /* Second line, because colour alone must never be the only cue for kind. */
+  .tip-kind {
+    font-size: 0.68rem;
+    color: var(--fg-dim);
+    white-space: nowrap;
   }
 </style>

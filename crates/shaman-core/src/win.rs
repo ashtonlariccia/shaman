@@ -155,6 +155,65 @@ mod timer {
 
 pub use timer::TimerResolution;
 
+/// Where the pointer is, and what is under it.
+///
+/// Dragging a terminal out of the sidebar has to answer one question at the
+/// moment the button comes up: which window — if any — was the cursor over?
+/// The webview cannot answer it. It holds the mouse capture for the duration of
+/// the drag, so its own pointer events keep arriving no matter where the cursor
+/// actually is, and it has no idea what sits above or beside it on the desktop.
+/// Asking the OS is the only honest answer, and it costs two calls.
+#[cfg(windows)]
+mod desktop {
+    use windows::Win32::Foundation::POINT;
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetAncestor, GetCursorPos, WindowFromPoint, GA_ROOT,
+    };
+
+    /// The cursor, in physical screen pixels.
+    ///
+    /// Physical rather than the CSS pixels the webview deals in, deliberately:
+    /// on a multi-monitor setup the two scale differently, and converting in
+    /// the frontend would put a DPI guess between the pointer and the drop.
+    pub fn cursor_position() -> Option<(i32, i32)> {
+        let mut point = POINT::default();
+        // SAFETY: writes through a pointer to a local that outlives the call.
+        unsafe { GetCursorPos(&mut point) }.ok()?;
+        Some((point.x, point.y))
+    }
+
+    /// The top-level window under a screen point, as a raw `HWND` value.
+    ///
+    /// `WindowFromPoint` reports the deepest child it can find — for a Tauri
+    /// window that is the WebView2 render surface, not the window the app knows
+    /// by label — so the result is walked back up to its root before being
+    /// handed out. Returned as an `isize` so callers can compare it against
+    /// their own window handles without this crate taking a dependency on the
+    /// exact `windows` version they were built with.
+    pub fn root_window_at(x: i32, y: i32) -> Option<isize> {
+        // SAFETY: both calls take plain values and return a handle we only
+        // ever compare; no ownership is implied by either.
+        let hit = unsafe { WindowFromPoint(POINT { x, y }) };
+        if hit.0.is_null() {
+            return None;
+        }
+        let root = unsafe { GetAncestor(hit, GA_ROOT) };
+        Some(if root.0.is_null() { hit.0 } else { root.0 } as isize)
+    }
+}
+
+#[cfg(not(windows))]
+mod desktop {
+    pub fn cursor_position() -> Option<(i32, i32)> {
+        None
+    }
+    pub fn root_window_at(_x: i32, _y: i32) -> Option<isize> {
+        None
+    }
+}
+
+pub use desktop::{cursor_position, root_window_at};
+
 #[cfg(windows)]
 mod job {
     use std::os::windows::io::RawHandle;

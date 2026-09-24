@@ -78,6 +78,12 @@
   --chip-radius: 5px;
   --chip-inset: 3px;
 
+  /* Where the first glyph in either bar begins, measured from the window's
+     left edge. Each bar subtracts its own chip padding from this, so "File" and
+     the first pinned connection start on the same vertical line even though
+     their chips are padded differently. */
+  --bar-text-inset: 12px;
+
   color-scheme: dark;
   font-family: "Segoe UI", system-ui, sans-serif;
   font-size: 14px;

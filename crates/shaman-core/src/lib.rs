@@ -35,7 +35,7 @@ pub use registry::{Registry, SessionSummary};
 pub use session::{Session, SessionId, SessionKind};
 pub use settings::{Appearance, CursorShape, Material};
 pub use ssh::{DiscoveredKey, SshAuth, SshError, SshFailure, SshOptions, SshSession};
-pub use win::harden_dll_search;
+pub use win::{cursor_position, harden_dll_search, root_window_at};
 
 /// Errors surfaced by the core engine.
 #[derive(Debug, thiserror::Error)]

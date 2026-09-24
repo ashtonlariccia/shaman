@@ -66,13 +66,26 @@
   /** Set for the duration of one click, so a finished drag doesn't also open. */
   let dragged = false;
 
-  /** Horizontal midpoint of every chip, in viewport coordinates. */
+  /**
+   * Horizontal midpoint of every chip, in viewport coordinates.
+   *
+   * Measured once per drag and reused. A pointer move fires as fast as the
+   * mouse reports -- up to 1kHz -- and every `getBoundingClientRect` forces the
+   * browser to flush layout, so measuring the whole strip on each one was
+   * paying for a layout pass per chip per move. The strip cannot reflow mid-drag
+   * (chips do not shuffle; an insertion line marks the drop instead), and the
+   * one thing that does move them -- scrolling -- clears the cache.
+   */
+  let mids: number[] | null = null;
+
   function midpoints(): number[] {
+    if (mids) return mids;
     if (!strip) return [];
-    return [...strip.querySelectorAll<HTMLElement>("li")].map((li) => {
+    mids = [...strip.querySelectorAll<HTMLElement>("li")].map((li) => {
       const box = li.getBoundingClientRect();
       return box.left + box.width / 2;
     });
+    return mids;
   }
 
   function onPointerDown(event: PointerEvent, index: number) {
@@ -81,6 +94,9 @@
     // Cleared here rather than only in the click handler: pointer capture does
     // not guarantee a click follows, and a stale flag would eat the next open.
     dragged = false;
+    // A fresh drag measures the strip again: chips may have been added, removed
+    // or reordered since the last one.
+    mids = null;
     // Capture keeps the drag alive when the cursor outruns a 24px-tall strip.
     // Not fatal if the pointer can't be captured — the drag still tracks, it
     // just stops early if the cursor leaves the chip — so don't fail the press.
@@ -120,6 +136,7 @@
 
   function onPointerCancel() {
     drag = null;
+    mids = null;
   }
 
   /**
@@ -161,6 +178,8 @@
     if (strip.scrollWidth <= strip.clientWidth) return;
     event.preventDefault();
     strip.scrollLeft += event.deltaY;
+    // Every chip just moved; the drag cache no longer describes the strip.
+    mids = null;
   }
 </script>
 
@@ -220,18 +239,30 @@
 
 <style>
   /* Deliberately thin: this is a strip of shortcuts, not a panel. It brackets
-     the window against the 28px title bar without eating terminal rows. */
+     the window against the 28px title bar without eating terminal rows.
+     Chips are sized from `--pinbar-height` rather than from their own text, so
+     they centre on the bar exactly. */
   .pinbar {
+    --pinbar-height: 24px;
+
     display: flex;
-    align-items: center;
-    height: 24px;
+    align-items: stretch;
+    height: var(--pinbar-height);
     flex: none;
-    padding: 0 0.2rem;
+    /* The mirror of the title bar. The band the eye centres on is the viewport's
+       inset plus this bar, so the inset is handed to the bottom and the chips
+       rise onto that band's centre line. */
+    padding-bottom: var(--viewport-inset);
+    /* Less the chip's own padding, so the first pin's icon starts on the same
+       vertical line as "File" above it. */
+    padding-left: calc(var(--bar-text-inset) - 0.45rem);
+    padding-right: 2px;
     user-select: none;
     overflow: hidden;
   }
 
   .hint {
+    align-self: center;
     color: var(--fg-faint);
     font-size: 0.7rem;
     padding: 0 0.4rem;
@@ -309,7 +340,11 @@
     font-family: inherit;
     font-size: 0.71rem;
     line-height: 1;
-    padding: 0.25rem 0.45rem;
+    /* Vertical size comes from the bar, not from the label: the chip is the bar
+       less the inset top and bottom, and the icon and text are centred in it by
+       the flexbox. Padding is horizontal only. */
+    height: calc(var(--pinbar-height) - 2 * var(--chip-inset));
+    padding: 0 0.45rem;
     white-space: nowrap;
     /* Held slightly back so a row of pins reads as a strip of shortcuts rather
        than a row of alerts; hover brings the colour up to full. */

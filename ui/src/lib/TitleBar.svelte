@@ -1,7 +1,5 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
-  // Vite emits this as a bundled asset, which satisfies the `img-src 'self'` CSP.
-  import mark from "./wave-mark.png";
   import type { SavedConnection, ShellProfile } from "./types";
   import { connectionLines } from "./connectionLabel";
   import KindIcon from "./KindIcon.svelte";
@@ -29,6 +27,9 @@
     oncopy: () => void;
     onpaste: () => void;
     onappearance: () => void;
+    /** The window button: this window only. */
+    onclosewindow: () => void;
+    /** File -> Exit: the whole application. */
     onquit: () => void;
   };
 
@@ -51,6 +52,7 @@
     oncopy,
     onpaste,
     onappearance,
+    onclosewindow,
     onquit,
   }: Props = $props();
 
@@ -145,13 +147,6 @@
 
 <!-- data-tauri-drag-region makes the empty areas behave like a real titlebar. -->
 <header class="titlebar" data-tauri-drag-region>
-  <!-- Holds the menus clear of the collapsed rail, and lines their chips up
-       with the viewport's left edge. Fixed, so they stay put when the sidebar
-       expands rather than sliding with a width they have nothing to do with. -->
-  <div class="gutter" data-tauri-drag-region>
-    <img class="mark" src={mark} alt="" draggable="false" data-tauri-drag-region />
-  </div>
-
   <nav class="menus" bind:this={menuWrap}>
     <!-- File -->
     <div class="menu-host">
@@ -206,6 +201,9 @@
             onclick={() => run(onclose)}
           >
             Close
+          </button>
+          <button class="menu-item" role="menuitem" onclick={() => run(onclosewindow)}>
+            Close Window
           </button>
           <button class="menu-item" role="menuitem" onclick={() => run(onquit)}>Exit</button>
         </div>
@@ -405,7 +403,9 @@
       {/if}
     </button>
 
-    <button class="ctl close" title="Close" onclick={onquit}>
+    <!-- Closes this window, not the application: with two windows open, the
+         other one carries on. File -> Exit is the one that ends everything. -->
+    <button class="ctl close" title="Close window" onclick={onclosewindow}>
       <svg width="8" height="8" viewBox="0 0 10 10" aria-hidden="true">
         <path d="M0.6 0.6 L9.4 9.4 M9.4 0.6 L0.6 9.4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
       </svg>
@@ -415,36 +415,28 @@
 
 <style>
   .titlebar {
+    /* Every chip in the bar is sized from this rather than from a repeated
+       literal, so the menus and the window buttons stay the same height and
+       centre on the same line. */
+    --titlebar-height: 28px;
+
     display: flex;
-    align-items: center;
-    height: 28px;
+    align-items: stretch;
+    height: var(--titlebar-height);
     flex: none;
+    /* The eye does not centre the menus in the 28px bar -- it centres them in
+       the whole band between the window's top edge and the viewport below,
+       which is the bar plus the viewport's inset. Padding the top by that inset
+       hands the extra space to the top, so the chips land on the band's centre
+       line instead of riding high above it. */
+    padding-top: var(--viewport-inset);
+    /* Less the pill's own padding and margin, so the label -- not the invisible
+       pill -- starts on the shared text line. */
+    padding-left: calc(var(--bar-text-inset) - 0.7rem - 1px);
     user-select: none;
     /* Above the terminal stage, so menus are never painted over. */
     position: relative;
     z-index: 100;
-  }
-
-  /* The rail, plus the viewport's inset: the first menu chip then begins where
-     the terminal's own left edge is. Both values come from elsewhere so this
-     cannot drift out of step with the layout it is matching. */
-  .gutter {
-    flex: none;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: calc(var(--rail-width) + var(--viewport-inset));
-  }
-
-  /* The mark is ~2.9x wider than tall, which is what lets it sit in a gutter
-     this narrow at all. Height is the constraint in a 28px bar. */
-  .mark {
-    display: block;
-    height: 13px;
-    width: auto;
-    /* The bar is a drag region; the image must not swallow the drag. */
-    pointer-events: none;
-    user-select: none;
   }
 
   .menus {
@@ -459,10 +451,14 @@
   }
 
   /* Hover chips float inside the bar instead of spanning its full height, and
-     are fully rounded into pills. The horizontal padding is deliberately larger
-     than the vertical: at this height a pill needs room on the ends or the
-     rounded caps crowd the text. */
+     are fully rounded into pills. Height is the bar less the chip inset top and
+     bottom -- stated rather than left to the text's own line box, so the pill
+     is centred on the bar exactly and matches the window buttons beside it. The
+     label is then centred inside the pill by the flexbox, not by padding. */
   .menu-trigger {
+    display: flex;
+    align-items: center;
+    height: calc(var(--titlebar-height) - 2 * var(--chip-inset));
     background: transparent;
     border: none;
     border-radius: 999px;
@@ -470,8 +466,13 @@
     cursor: pointer;
     font-size: 0.75rem;
     line-height: 1;
-    padding: 0.3rem 0.7rem;
-    margin: var(--chip-inset) 1px;
+    /* Horizontal room the pill needs on its ends, or the rounded caps crowd the
+       text -- plus a hair at the top. `align-items: center` centres the line
+       box, and that box reserves descender depth these three labels never use,
+       so the letters sit about 0.7px high; top padding shifts content by half
+       its value, hence 1.4px. Measured off a screenshot, not guessed. */
+    padding: 1.4px 0.7rem 0;
+    margin: 0 1px;
     transition: background 90ms ease;
   }
   .menu-trigger:hover {
@@ -494,10 +495,10 @@
   }
 
   /* Rounded and inset, so they read as buttons rather than as slabs welded to
-     the window edge. */
+     the window edge. Same height as the menu pills, from the same measurement. */
   .ctl {
     width: 30px;
-    height: 22px;
+    height: calc(var(--titlebar-height) - 2 * var(--chip-inset));
     background: transparent;
     border: none;
     border-radius: var(--chip-radius);

@@ -2,7 +2,7 @@
  * The operations the menu bar performs on a terminal.
  *
  * Deliberately narrow: the menus should not reach into xterm internals, so each
- * TerminalView hands out exactly these four when it mounts.
+ * TerminalView hands out exactly these few when it mounts.
  */
 export type TerminalApi = {
   /** The current selection, or null if nothing is selected. */
@@ -24,4 +24,13 @@ export type TerminalApi = {
    */
   paste: (text: string) => void;
   focus: () => void;
+  /**
+   * Give up this terminal without killing what is running in it.
+   *
+   * Returns xterm's serialisation of the screen and scrollback, for the window
+   * taking it over to write into a fresh terminal. The view stops owning the
+   * session at this point: unmounting it will no longer close it, which is the
+   * whole difference between moving a tab and closing one.
+   */
+  detach: () => string;
 };

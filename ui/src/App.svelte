@@ -2,21 +2,23 @@
   import { onMount } from "svelte";
   import { invoke } from "@tauri-apps/api/core";
   import { listen } from "@tauri-apps/api/event";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
 
   import AppearanceDialog from "./lib/AppearanceDialog.svelte";
   import ConnectDialog, { type SshRequest } from "./lib/ConnectDialog.svelte";
+  import ContextMenu from "./lib/ContextMenu.svelte";
+  import DragGhost from "./lib/DragGhost.svelte";
   import ManageConnections from "./lib/ManageConnections.svelte";
   import PinBar from "./lib/PinBar.svelte";
   import SaveToast from "./lib/SaveToast.svelte";
   import Sidebar from "./lib/Sidebar.svelte";
   import SidebarResizer from "./lib/SidebarResizer.svelte";
-  import TerminalView from "./lib/TerminalView.svelte";
   import TitleBar from "./lib/TitleBar.svelte";
   import TrustedHosts from "./lib/TrustedHosts.svelte";
-  import Watermark from "./lib/Watermark.svelte";
 
   import { copyFrom, pasteInto } from "./lib/clipboard";
   import { connectionLines } from "./lib/connectionLabel";
+  import { item, SEP, type ContextMenuState } from "./lib/contextMenu";
   import { clipboardShortcut } from "./lib/keys";
   import { RAIL_WIDTH } from "./lib/layout";
   import { AppearanceStore } from "./lib/state/appearance.svelte";
@@ -25,6 +27,8 @@
   import { Pins } from "./lib/state/pins.svelte";
   import { Sessions } from "./lib/state/sessions.svelte";
   import { SshFlow } from "./lib/state/sshFlow.svelte";
+  import { TabDrag } from "./lib/state/tabDrag.svelte";
+  import type { Handoff, Slot } from "./lib/slots";
   import type { Pin, SavedConnection, ShellProfile } from "./lib/types";
 
   const sessions = new Sessions();
@@ -33,6 +37,45 @@
   const hosts = new TrustedHostStore();
   const ssh = new SshFlow();
   const appearance = new AppearanceStore();
+
+  const appWindow = getCurrentWindow();
+  const drag = new TabDrag(appWindow.label);
+
+  /**
+   * xterm and its WebGL renderer are most of the frontend bundle, and the
+   * window opens with no terminal in it — so they are kept out of the startup
+   * payload entirely and fetched afterwards.
+   *
+   * Two things trigger the fetch, whichever comes first: the browser going
+   * idle once the window is up, or a terminal actually being opened. The idle
+   * pass is what keeps the first terminal instant despite the split; the
+   * effect below is the guarantee, for the case where someone opens one faster
+   * than the idle callback fires.
+   */
+  let TerminalView = $state<typeof import("./lib/TerminalView.svelte").default | null>(null);
+  let terminalViewLoad: Promise<unknown> | null = null;
+
+  function loadTerminalView() {
+    terminalViewLoad ??= import("./lib/TerminalView.svelte")
+      .then((m) => {
+        TerminalView = m.default;
+        // The one failure mode a split introduces is a chunk that never
+        // arrives -- a bad path, or a CSP that refuses it -- and it is
+        // invisible until someone opens a terminal. Say so on the same beacon
+        // scripts/verify.sh already reads, so it is caught headlessly.
+        void invoke("ui_ready", { detail: "TERMINAL_READY" }).catch(() => {});
+      })
+      .catch((e) => {
+        // Let the next attempt retry rather than wedging on a failed fetch.
+        terminalViewLoad = null;
+        console.error("loading the terminal view failed", e);
+      });
+    return terminalViewLoad;
+  }
+
+  $effect(() => {
+    if (sessions.slots.length > 0) void loadTerminalView();
+  });
 
   let profiles = $state<ShellProfile[]>([]);
   let manageOpen = $state(false);
@@ -185,6 +228,104 @@
     }
   }
 
+  /**
+   * Close this window and nothing else.
+   *
+   * The × used to call `quit_app`, which exits the process — so closing one of
+   * two windows took the other one with it. Only File → Exit means the whole
+   * application now.
+   *
+   * The terminals go first: they belong to this window, and a shell left
+   * running with no window attached is a process nobody can see or stop.
+   * `destroy` rather than `close`, because `close` would come straight back
+   * round through the close handler below.
+   */
+  let closing = false;
+
+  async function closeWindow() {
+    if (closing) return;
+    closing = true;
+    try {
+      await sessions.closeAll();
+    } finally {
+      await appWindow.destroy();
+    }
+  }
+
+  // --- right-click menu -------------------------------------------------------
+  //
+  // WebView2 supplies its own, and it is a *browser's* menu: a dozen entries
+  // about pages, history and printing, none of which mean anything in a
+  // terminal. It is suppressed everywhere the app has something better to say
+  // -- which is everywhere except a text field, where Cut/Copy/Paste is the
+  // native menu earning its keep, and inside a terminal, where xterm already
+  // owns right-click for copy-and-paste.
+  //
+  // One menu, owned here, so a right-click on a sidebar row and a right-click
+  // on the window cannot both leave a popover up.
+
+  let ctx = $state<ContextMenuState | null>(null);
+
+  /**
+   * Reload the frontend.
+   *
+   * The shells are closed first. The slot list lives only in this page, so a
+   * reload loses the tabs either way; without this the PTYs behind them would
+   * keep running with nothing left that can see or stop them.
+   */
+  async function refreshPage() {
+    await sessions.closeAll();
+    location.reload();
+  }
+
+  /** True for anything where the browser's own Cut/Copy/Paste menu is right. */
+  function isEditable(target: EventTarget | null): boolean {
+    return (
+      target instanceof HTMLElement &&
+      (target.isContentEditable || !!target.closest("input, textarea"))
+    );
+  }
+
+  function onWindowContextMenu(event: MouseEvent) {
+    // Something nearer the click already answered it -- the pinned strip has
+    // its own menu, and the terminal has right-click copy/paste.
+    if (event.defaultPrevented || isEditable(event.target)) return;
+    event.preventDefault();
+    ctx = { x: event.clientX, y: event.clientY, items: [item("Refresh Page", refreshPage)] };
+  }
+
+  /** A row in the sidebar: the same menu, plus the one thing a row can do. */
+  function onSlotContextMenu(event: MouseEvent, slot: Slot) {
+    ctx = {
+      x: event.clientX,
+      y: event.clientY,
+      items: [
+        item("Close Terminal", () => void sessions.close(slot.key), true),
+        SEP,
+        item("Refresh Page", refreshPage),
+      ],
+    };
+  }
+
+  // --- moving terminals between windows --------------------------------------
+
+  /** Take in every terminal handed to this window while it wasn't looking. */
+  async function claimHandoffs() {
+    try {
+      const waiting = await invoke<Handoff[]>("claim_handoffs");
+      for (const handoff of waiting) sessions.adopt(handoff);
+    } catch (e) {
+      console.error("claim_handoffs failed", e);
+    }
+  }
+
+  /** A drag was released. Where it landed is the OS's answer, not the page's. */
+  async function dropDraggedTab() {
+    const drop = await drag.finish();
+    if (!drop) return;
+    await sessions.handoff(drop.key, drop.target, drop.x, drop.y);
+  }
+
   // The menu advertises these, so they have to actually work. `preventDefault`
   // matters as much as the handler: without it the webview also runs its own
   // paste into xterm's textarea and the text arrives twice.
@@ -205,15 +346,21 @@
 
   onMount(() => {
     (async () => {
-      try {
-        profiles = await invoke<ShellProfile[]>("list_profiles");
-      } catch (e) {
-        console.error("list_profiles failed", e);
-      }
-      await connections.refresh();
-      await pins.refresh();
-      await connections.refreshKeys();
-      await appearance.load();
+      // Nothing here depends on anything else here: the pinned strip resolves
+      // itself reactively once both the pins and the connections have landed,
+      // so awaiting each in turn only serialised five independent round trips
+      // -- five disk reads among them -- that can all be in flight at once.
+      const [listed] = await Promise.all([
+        invoke<ShellProfile[]>("list_profiles").catch((e) => {
+          console.error("list_profiles failed", e);
+          return [] as ShellProfile[];
+        }),
+        connections.refresh(),
+        pins.refresh(),
+        connections.refreshKeys(),
+        appearance.load(),
+      ]);
+      profiles = listed;
       // Deliberately opens nothing: the app starts empty, and a terminal is
       // launched from the Terminal menu.
 
@@ -222,7 +369,16 @@
       void invoke("ui_ready", {
         detail: `APP_READY profiles=${profiles.length} sessions=${sessions.slots.length} pins=${pins.list.length}`,
       }).catch(() => {});
+
+      // Warm the terminal chunk now that the window is up and idle, so the
+      // first terminal does not pay for the split second time.
+      const idle = window.requestIdleCallback ?? ((fn: () => void) => setTimeout(fn, 200));
+      idle(() => void loadTerminalView());
     })();
+
+    // A window opened *for* a dragged terminal has one waiting before its first
+    // frame; an existing window is told when one arrives. Both end up here.
+    void claimHandoffs();
 
     // `exit` in the shell (or the process dying) closes the tab, exactly as if
     // it had been closed from the sidebar. The session is already gone, so
@@ -231,13 +387,24 @@
       sessions.dropBySessionId(event.payload);
     });
 
+    const stopAdopt = listen("session-adopt", () => void claimHandoffs());
+
+    // Alt+F4 and the taskbar's Close both arrive here, so the terminals are
+    // cleaned up however the window is shut -- not only from the × in the bar.
+    const stopClose = appWindow.onCloseRequested((event) => {
+      event.preventDefault();
+      void closeWindow();
+    });
+
     return () => {
       void stop.then((unlisten) => unlisten());
+      void stopAdopt.then((unlisten) => unlisten());
+      void stopClose.then((unlisten) => unlisten());
     };
   });
 </script>
 
-<svelte:window onkeydown={onKeydown} />
+<svelte:window onkeydown={onKeydown} oncontextmenu={onWindowContextMenu} />
 
 <div class="app">
   <TitleBar
@@ -265,6 +432,7 @@
     onappearance={() => (appearanceOpen = true)}
     oncopy={() => void copyFrom(sessions.activeTerminal)}
     onpaste={() => void pasteInto(sessions.activeTerminal)}
+    onclosewindow={() => void closeWindow()}
     onquit={quit}
   />
 
@@ -275,9 +443,12 @@
       width={effectiveSidebarWidth}
       collapsed={sidebarCollapsed}
       {resizing}
+      {drag}
       onselect={(key) => sessions.select(key)}
       onclose={(key) => void sessions.close(key)}
       ontoggle={() => (sidebarCollapsed = !sidebarCollapsed)}
+      ondrop={() => void dropDraggedTab()}
+      oncontext={onSlotContextMenu}
     />
 
     <!-- No handle while collapsed: the rail has one width, and a drag that
@@ -293,35 +464,38 @@
     <!-- The resizer normally provides the gap on this side; collapsed, it is
          not rendered, so the stage supplies its own. -->
     <section class="stage" class:railed={sidebarCollapsed}>
-      {#each sessions.slots as slot (slot.key)}
-        <TerminalView
-          profileId={slot.profileId}
-          ssh={slot.ssh ?? undefined}
-          active={slot.key === sessions.activeKey}
-          {appearance}
-          onopened={(id) => {
-            sessions.markOpened(slot.key, id);
-            ssh.connected(slot.key);
-            if (slot.ssh) void connections.maybeOffer(slot.ssh);
-          }}
-          onfailed={(failure) => {
-            // Drop the dead tab; the dialog stays up for another attempt.
-            if (ssh.failed(slot.key, failure)) sessions.drop(slot.key);
-          }}
-          onready={(api) => sessions.terminals.set(slot.key, api)}
-          ongone={() => sessions.terminals.delete(slot.key)}
-          onpasterequest={() => void pasteInto(sessions.terminals.get(slot.key))}
-          oncopyrequest={() => void copyFrom(sessions.terminals.get(slot.key), true)}
-        />
-      {/each}
-
-      {#if sessions.slots.length === 0}
-        <!-- Inside the stage, so it centres on the editor area rather than on
-             the whole window. -->
-        <Watermark />
+      {#if TerminalView}
+        {#each sessions.slots as slot (slot.key)}
+          <TerminalView
+            profileId={slot.profileId}
+            ssh={slot.ssh ?? undefined}
+            adopt={slot.adopt ?? undefined}
+            active={slot.key === sessions.activeKey}
+            {appearance}
+            onopened={(id) => {
+              sessions.markOpened(slot.key, id);
+              ssh.connected(slot.key);
+              if (slot.ssh) void connections.maybeOffer(slot.ssh);
+            }}
+            onfailed={(failure) => {
+              // Drop the dead tab; the dialog stays up for another attempt.
+              if (ssh.failed(slot.key, failure)) sessions.drop(slot.key);
+            }}
+            onready={(api) => sessions.terminals.set(slot.key, api)}
+            ongone={() => sessions.terminals.delete(slot.key)}
+            onpasterequest={() => void pasteInto(sessions.terminals.get(slot.key))}
+            oncopyrequest={() => void copyFrom(sessions.terminals.get(slot.key), true)}
+          />
+        {/each}
       {/if}
     </section>
   </main>
+
+  <DragGhost {drag} />
+
+  {#if ctx}
+    <ContextMenu x={ctx.x} y={ctx.y} items={ctx.items} onclose={() => (ctx = null)} />
+  {/if}
 
   <PinBar
     pins={resolvedPins}

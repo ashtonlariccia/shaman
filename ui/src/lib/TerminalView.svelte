@@ -4,6 +4,7 @@
   import { Terminal } from "@xterm/xterm";
   import { FitAddon } from "@xterm/addon-fit";
   import { WebglAddon } from "@xterm/addon-webgl";
+  import { SerializeAddon } from "@xterm/addon-serialize";
   import "@xterm/xterm/css/xterm.css";
 
   import type { TerminalApi } from "./terminalApi";
@@ -11,6 +12,7 @@
   import { installTerminalQueries } from "./termQueries";
 
   import type { SshRequest } from "./ConnectDialog.svelte";
+  import type { Adoption } from "./slots";
   import { terminalTheme } from "./theme";
   import type { AppearanceStore } from "./state/appearance.svelte";
 
@@ -18,6 +20,12 @@
     /** Exactly one of these: a local shell profile, or an SSH target. */
     profileId?: string;
     ssh?: SshRequest;
+    /**
+     * Set when this tab was dragged in from another window. The shell is
+     * already running, so nothing is started -- the view restores the screen it
+     * had and takes over its output.
+     */
+    adopt?: Adoption;
     active: boolean;
     /** Shared look. Changes here reach every open terminal, live. */
     appearance: AppearanceStore;
@@ -35,6 +43,7 @@
   let {
     profileId,
     ssh,
+    adopt,
     active,
     appearance,
     onopened,
@@ -79,6 +88,12 @@
     });
     const f = new FitAddon();
     t.loadAddon(f);
+    // Dragging a tab to another window has to carry the screen with it, and a
+    // second terminal cannot be handed a PTY's history -- only the first window
+    // still has it. The addon writes the buffer out as the escape sequences
+    // that would reproduce it, which is what crosses to the other window.
+    const serializer = new SerializeAddon();
+    t.loadAddon(serializer);
     t.open(host);
 
     // GPU rendering keeps a flooding terminal cheap; xterm falls back to the DOM
@@ -124,6 +139,16 @@
         t.paste(text);
       },
       focus: () => t.focus(),
+      detach: () => {
+        // From here on this view is a spectator: the teardown below checks the
+        // flag and leaves the session alone, because another window is about to
+        // pick it up.
+        detached = true;
+        // Scrollback is capped well below the terminal's own 5000 lines: the
+        // whole thing has to survive a round trip through JSON, and the last
+        // couple of screens is what anyone actually reads after a move.
+        return serializer.serialize({ scrollback: 1000 });
+      },
     };
     onready?.(api);
 
@@ -213,6 +238,8 @@
     }
 
     let disposed = false;
+    /** Handed to another window: unmounting must not close the session. */
+    let detached = false;
 
     const channel = new Channel<ArrayBuffer | number[]>();
     channel.onmessage = (message) => {
@@ -225,34 +252,63 @@
 
     (async () => {
       try {
-        const id = ssh?.savedId
-          ? // Saved connection: the backend resolves the password from the
-            // vault, so it never crosses the IPC boundary.
-            await invoke<number>("ssh_connect_saved", {
-              onOutput: channel,
-              id: ssh.savedId,
-              cols: t.cols,
-              rows: t.rows,
-            })
-          : ssh
-          ? await invoke<number>("ssh_connect", {
-              onOutput: channel,
-              target: ssh,
-              cols: t.cols,
-              rows: t.rows,
-            })
-          : await invoke<number>("session_open", {
-              onOutput: channel,
-              profileId,
-              cols: t.cols,
-              rows: t.rows,
-            });
+        let id: number;
+
+        if (adopt) {
+          // Restore the screen *before* attaching. Attaching returns whatever
+          // the shell said while the tab was between windows, and that has to
+          // land on top of the old screen rather than underneath it -- so the
+          // two arrive as two separate, ordered steps rather than racing down
+          // the same channel.
+          if (adopt.snapshot) t.write(adopt.snapshot);
+
+          const backlog = await invoke<ArrayBuffer | number[]>("session_attach", {
+            onOutput: channel,
+            id: adopt.sessionId,
+          });
+          const held =
+            backlog instanceof ArrayBuffer
+              ? new Uint8Array(backlog)
+              : Uint8Array.from(backlog as number[]);
+          if (held.length > 0) t.write(held);
+
+          id = adopt.sessionId;
+        } else {
+          id = ssh?.savedId
+            ? // Saved connection: the backend resolves the password from the
+              // vault, so it never crosses the IPC boundary.
+              await invoke<number>("ssh_connect_saved", {
+                onOutput: channel,
+                id: ssh.savedId,
+                cols: t.cols,
+                rows: t.rows,
+              })
+            : ssh
+            ? await invoke<number>("ssh_connect", {
+                onOutput: channel,
+                target: ssh,
+                cols: t.cols,
+                rows: t.rows,
+              })
+            : await invoke<number>("session_open", {
+                onOutput: channel,
+                profileId,
+                cols: t.cols,
+                rows: t.rows,
+              });
+        }
+
         if (disposed) {
           void invoke("session_close", { id });
           return;
         }
         sessionId = id;
         onopened?.(id);
+
+        // The two windows are rarely the same size, so tell the shell about
+        // this one. Only after `sessionId` is set: syncSize is a no-op without
+        // it, which is exactly why it could not run any earlier.
+        if (adopt) syncSize();
 
         t.onData((data) => {
           if (sessionId !== null) void invoke("session_write", { id: sessionId, data });
@@ -294,7 +350,7 @@
       uninstallQueries();
       observer.disconnect();
       ongone?.();
-      if (sessionId !== null) void invoke("session_close", { id: sessionId });
+      if (sessionId !== null && !detached) void invoke("session_close", { id: sessionId });
       t.dispose();
     };
   });

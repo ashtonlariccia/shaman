@@ -38,7 +38,8 @@ reported **High** integrity, helper-hosted tabs **Medium**.
 Phase 5 complete — SSH with password **and private-key** auth, host-key
 verification, saved connections, and a DPAPI-encrypted credential vault. Phase
 6 is underway: copy/paste, the pinned-connection strip, appearance settings
-(Edit → Appearance) and a collapsible sidebar are in. Admin terminals are
+(Edit → Appearance), a collapsible sidebar and multi-window terminal dragging
+are in. Admin terminals are
 switched off for now — see above.
 
 Connecting is staged, so a host that is off or on another network fails in
@@ -148,6 +149,74 @@ harmless where a local one wearing the accent would mislead. Kind is derived in
 one place (`ui/src/lib/kinds.ts`), and every colour is paired with an icon and a
 tooltip so it is never the only cue.
 
+## Windows, and moving terminals between them
+
+**File → New Window** opens a second window in the same process — a second
+webview, not a second Shaman — so the two share one WebView2 host and one
+session registry, and the extra window costs very little memory.
+
+The × in the title bar closes **that window only**; the others carry on, and the
+application exits when the last one goes. **File → Exit** is the one that ends
+everything. Closing a window kills the terminals in it, however it is closed —
+the ×, *File → Close Window*, Alt+F4 or the taskbar all run the same path.
+
+**Drag a terminal out of the sidebar** to move it to another window. Drop it on
+another Shaman window and that window takes it over; drop it anywhere else — the
+desktop, another application — and a new window opens under the cursor with the
+terminal in it. A chip follows the pointer and says which of the two will
+happen.
+
+The shell is never restarted. What moves is only which window is listening:
+
+- The session's output goes through a routing table rather than straight down
+  the channel of whichever window opened it (`Outputs` in `commands.rs`).
+  Dragging empties the slot and the receiving window fills it back in; anything
+  the shell says in between is held and handed over on attach, so a command that
+  finishes mid-drag does not lose its output.
+- The **screen travels as a snapshot**, because only the old window still has
+  the scrollback — a PTY has no memory of what it printed. xterm's serialize
+  addon writes the buffer out as the escape sequences that reproduce it, and the
+  new window writes that in before attaching. The last 1000 lines come along.
+- **Where the cursor was released is a question only the OS can answer.** The
+  webview takes the mouse capture when the drag starts, so its own pointer
+  events keep arriving as if the cursor never left, and it cannot see other
+  windows at all. `drop_target` asks Win32 instead: `GetCursorPos`, then
+  `WindowFromPoint` walked up to its root window, matched against each Tauri
+  window's `HWND`.
+
+A tab that is still connecting cannot be dragged: there is no session behind it
+to move yet.
+
+## The sidebar, and the right-click menu
+
+Hovering a terminal in the sidebar raises a card beside it with the terminal's
+name and what kind it is. It is drawn by the app rather than left to the `title`
+attribute: the native tooltip ignores the theme, arrives after about a second,
+and — with the sidebar collapsed to its rail — is the only thing naming the
+terminal, which is too important a job to hand to a control that cannot be
+styled. The card is delayed ~260ms so sweeping down the list does not flash one
+per row, and it is suppressed while a terminal is being dragged, where the chip
+under the pointer is already carrying the name.
+
+Right-click is the app's own menu, not WebView2's. The browser one is a page
+menu — Back, Forward, Reload, Save as, Print, Inspect — and none of it means
+anything here:
+
+- **On a terminal in the sidebar:** *Close Terminal*, and *Refresh Page*.
+- **Anywhere else in the chrome:** *Refresh Page*.
+- **Inside a terminal:** unchanged — right-click copies a selection and pastes
+  when there is none (see *Copy and paste*).
+- **In a text field:** unchanged, too. Cut/Copy/Paste is the one case where the
+  native menu is the right answer, so it is left alone.
+
+*Refresh Page* reloads the frontend. It closes the terminals first: the tab list
+lives only in the page, so a reload loses the tabs either way, and without that
+their shells would go on running with nothing left that could see or stop them.
+
+One menu is open at a time — App owns the state (`ui/src/lib/contextMenu.ts`)
+and the sidebar hands its right-clicks up rather than growing a popover of its
+own.
+
 ## Pinned connections
 
 A thin strip along the bottom of the window holds quick-open buttons for the
@@ -252,8 +321,10 @@ Two source files, and they are not interchangeable:
 |---|---|
 | `icons/source.png` | The original full trident-and-waves artwork, 1024². The master — everything else is cut from it. |
 | `icons/source-waves.png` | Just the two waves, centred on a square canvas. **This is what the app icon is generated from.** |
-| `ui/src/lib/wave-mark.png` | The same waves, as the title-bar mark. |
-| `ui/src/lib/waves.txt` | The same waves again, as 150×27 ASCII, for the empty-stage watermark. |
+
+The logo appears in the app icon only. The title bar carries no mark and the
+empty stage no watermark: both were dropped, so the chrome is menus and pins and
+nothing else.
 
 Regenerate the icon set after changing the square source:
 

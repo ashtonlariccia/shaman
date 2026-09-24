@@ -13,6 +13,8 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-is-maximized",
     "core:window:allow-close",
+    "core:window:allow-destroy",
+    "core:window:allow-set-focus",
     "core:webview:allow-create-webview-window",
     "clipboard-manager:allow-read-text",
     "clipboard-manager:allow-write-text"

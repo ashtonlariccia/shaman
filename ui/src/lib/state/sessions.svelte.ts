@@ -9,7 +9,14 @@
 import { invoke } from "@tauri-apps/api/core";
 
 import type { SshRequest } from "../ConnectDialog.svelte";
-import { newSlot, newSshSlot, type Slot } from "../slots";
+import {
+  adoptedSlot,
+  handoffFor,
+  newSlot,
+  newSshSlot,
+  type Handoff,
+  type Slot,
+} from "../slots";
 import type { TerminalApi } from "../terminalApi";
 import type { ShellProfile } from "../types";
 
@@ -40,6 +47,11 @@ export class Sessions {
   /** `title` overrides `user@host` — saved connections use the name you gave them. */
   openSsh(request: SshRequest, title?: string): Slot {
     return this.#add(newSshSlot(request, title));
+  }
+
+  /** A terminal dragged in from another window. Its shell never stopped. */
+  adopt(handoff: Handoff): Slot {
+    return this.#add(adoptedSlot(handoff));
   }
 
   #add(slot: Slot): Slot {
@@ -112,6 +124,76 @@ export class Sessions {
 
   closeActive() {
     if (this.activeKey !== null) void this.close(this.activeKey);
+  }
+
+  /**
+   * Kill every terminal in this window.
+   *
+   * What closing a window means, now that closing one no longer ends the
+   * application: the shells belonged to this window, and leaving them running
+   * with nothing attached would be a leak nobody can see or reach.
+   */
+  async closeAll() {
+    const ids = this.slots.map((s) => s.sessionId).filter((id) => id !== null);
+    this.slots = [];
+    this.activeKey = null;
+    this.terminals.clear();
+
+    await Promise.all(
+      ids.map((id) =>
+        invoke("session_close", { id }).catch((e) =>
+          console.error("session_close failed", e),
+        ),
+      ),
+    );
+  }
+
+  /**
+   * Move a live terminal to another window, or to one opened for it.
+   *
+   * The session is never stopped and never restarted: it is unhooked from this
+   * window's output channel, the row goes, and the receiving window hooks it
+   * back up. The screen travels as a snapshot because only this window still
+   * has the scrollback — the PTY has no memory of what it printed.
+   *
+   * `target` is a window label, or null to open a new window at (`x`, `y`).
+   */
+  async handoff(key: number, target: string | null, x: number, y: number) {
+    const slot = this.slots.find((s) => s.key === key);
+    // A tab still connecting has nothing to move: there is no session behind it
+    // yet, and the attempt would kill the dialog's retry.
+    if (!slot || slot.sessionId === null) return;
+
+    const id = slot.sessionId;
+
+    // `detach` is what stops the unmount below from killing the shell, so a tab
+    // whose view is somehow missing must stay where it is: dropping the row
+    // without it would close the very session we are trying to move.
+    const view = this.terminals.get(key);
+    if (!view) return;
+    const snapshot = view.detach();
+
+    try {
+      await invoke("session_detach", { id });
+    } catch (e) {
+      console.error("session_detach failed", e);
+      return;
+    }
+
+    const handoff = handoffFor(slot, id, snapshot);
+
+    // Drop the row before the other window builds its own, so the terminal is
+    // never in two places at once. `drop` rather than `close`: the shell lives.
+    this.drop(key);
+
+    try {
+      await invoke("handoff_session", { target, payload: handoff, x, y });
+    } catch (e) {
+      // Nothing took it. Take it back rather than orphaning a running shell
+      // that no window can reach.
+      console.error("handoff_session failed", e);
+      this.adopt(handoff);
+    }
   }
 
   /**

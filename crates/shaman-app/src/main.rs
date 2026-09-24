@@ -122,6 +122,9 @@ fn main() {
             commands::appearance,
             commands::set_appearance,
             commands::new_window,
+            commands::drop_target,
+            commands::handoff_session,
+            commands::claim_handoffs,
             commands::session_open,
             commands::ssh_connect,
             commands::ssh_connect_saved,
@@ -142,6 +145,8 @@ fn main() {
             commands::session_write,
             commands::session_resize,
             commands::session_close,
+            commands::session_detach,
+            commands::session_attach,
             commands::quit_app,
         ])
         .run(tauri::generate_context!())

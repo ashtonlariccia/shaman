@@ -51,6 +51,17 @@ const CANDIDATES = [
   "JetBrains Mono",
   "Liberation Mono",
   "Maple Mono",
+  // Nerd Fonts install one family per line-height/spacing variant rather than
+  // one family with styles, so each usable face has to be named. L/M/S are the
+  // three line heights; the plain name is the double-width-icon build and
+  // "Mono" the single-width one, which is what a terminal grid wants -- both
+  // are offered because powerline prompts differ on which they expect.
+  "MesloLGL Nerd Font",
+  "MesloLGL Nerd Font Mono",
+  "MesloLGM Nerd Font",
+  "MesloLGM Nerd Font Mono",
+  "MesloLGS Nerd Font",
+  "MesloLGS Nerd Font Mono",
   "Monaspace Argon",
   "Monaspace Neon",
   "Monaspace Xenon",
