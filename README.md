@@ -315,15 +315,15 @@ Already present on the current dev machine:
 
 ## Icons and artwork
 
-The icon is drawn, not cut: two SVG masters, rasterised into the set Tauri
-bundles.
+The icon is a ringed planet, drawn as SVG and rasterised into the set Tauri
+bundles. It floats on transparency — no tile.
 
 | File | What it is |
 |---|---|
-| `icons/icon.svg` | The master. The trident-and-waves mark on a Fluent tile; everything 64px and up comes from here. |
-| `icons/icon-small.svg` | The same icon redrawn for 48px and below: mark scaled up and stroked, one wave instead of two, no bloom or rim highlight. |
-| `icons/source.png` | The original trident-and-waves artwork, 1024². Provenance for the mark — nothing is generated from it any more. |
-| `icons/source-waves.png` | Just the two waves. What the icon used to be cut from; kept so the older icons can be traced back. |
+| `icons/icon.svg` | The master. Everything 64px and up comes from here. |
+| `icons/icon-small.svg` | The same planet redrawn for 48px and below: ring half again as thick, larger sphere, no rim light. |
+| `icons/source.png` | The original trident-and-waves artwork, 1024². The mark the icon used to be cut from; kept so the older icons can be traced back. |
+| `icons/source-waves.png` | Just the two waves of that mark. Same story. |
 
 Regenerate the whole set after changing either master:
 
@@ -337,14 +337,18 @@ resamples a single bitmap into every size, which is what left the small icons
 smeared, and it writes `android/` and `ios/` directories this project has no use
 for.
 
-Two things about the design are deliberate, and a redraw should keep them:
+Three things about the design are deliberate, and a redraw should keep them:
 
-- **The tile is indigo.** Windows Terminal's is near-black and PowerShell's is
-  royal blue. Sharing their shape and lighting is the point; being confused with
-  them in a taskbar is not.
-- **Small sizes are a separate drawing.** The mark is mostly thin tapered limbs,
-  and below about 64px they fall under a pixel and dissolve into the tile.
-  `SMALL_BELOW` in `scripts/icons.py` is where the switch happens.
+- **It fills the canvas.** The ring is tilted 38 degrees so the object is
+  roughly square. A shallower tilt leaves the top and bottom of the icon empty,
+  and an icon that does not reach its own edges reads as low resolution next to
+  the ones beside it in the taskbar.
+- **It carries its own contrast.** With no tile behind it, the sphere has to
+  hold up on a white desktop and a black taskbar both: hence the light blue
+  terminator and the violet rim light on the dark limb.
+- **Small sizes are a separate drawing.** A 42-unit ring stroke is under a pixel
+  once the canvas is 16. `SMALL_BELOW` in `scripts/icons.py` is where the switch
+  happens.
 
 The logo appears in the app icon only. The title bar carries no mark and the
 empty stage no watermark: both were dropped, so the chrome is menus and pins and

@@ -22,10 +22,11 @@ from PIL import Image
 
 ICONS = Path(__file__).resolve().parent.parent / "crates" / "shaman-app" / "icons"
 
-# The master is drawn at 1024 and downsampled. Rendering each target size
-# directly would be sharper in principle, but Chrome's own downscaling of the
-# blur is worse than Lanczos on the finished bitmap.
-MASTER_PX = 1024
+# The masters are drawn at 1024 but rendered at twice that and downsampled.
+# Rendering each target size directly would be sharper in principle, but
+# Chrome's own downscaling is worse than Lanczos on the finished bitmap, and
+# the odd sizes (107, 142, 310) land on non-integer ratios either way.
+MASTER_PX = 2048
 
 # Below this, the simplified master is used: the full one's thinnest limbs
 # fall under a pixel and dissolve.

@@ -1,78 +1,59 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Shaman's app icon: the trident-and-waves mark on a Fluent tile.
+  Shaman's app icon: a ringed planet, free-floating on transparency.
 
-  Drawn here rather than cut from icons/source.png so that every size is
-  rasterised from vectors instead of resampled from a 1024px bitmap. The
-  small sizes (48px and below) come from icon-small.svg instead, because
-  the strokes below thin out to nothing once the canvas is a taskbar icon.
+  No tile. Windows 11 puts its own apps in both camps, and the tile version of
+  this icon read as a sticker next to the Fluent objects around it. The object
+  has to carry its own contrast instead: a light blue terminator on the sphere
+  and a violet ring that stays legible on a light desktop and a dark taskbar
+  alike.
 
-  scripts/icons.sh renders both into the PNG/ICO/ICNS set.
+  Sizes 48px and below come from icon-small.svg. scripts/icons.sh renders both
+  into the PNG/ICO/ICNS set.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- The tile. Indigo rather than the near-black Windows Terminal and the
-         royal blue of PowerShell: still reads as a console surface, but is not
-         mistaken for either of them in a taskbar. -->
-    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2b2f5e"/>
-      <stop offset="0.5" stop-color="#171a38"/>
-      <stop offset="1" stop-color="#0c0e20"/>
-    </linearGradient>
-
-    <!-- Fluent's light source sits above and to the left of the icon. -->
-    <radialGradient id="sheen" cx="0.22" cy="0.14" r="0.75">
-      <stop offset="0" stop-color="#8ea6ff" stop-opacity="0.32"/>
-      <stop offset="1" stop-color="#8ea6ff" stop-opacity="0"/>
+    <!-- Fluent lights everything from the top left; the sphere's highlight sits
+         there and the shadow runs to the opposite limb. -->
+    <radialGradient id="ball" cx="0.33" cy="0.27" r="0.88">
+      <stop offset="0" stop-color="#9ccdff"/>
+      <stop offset="0.44" stop-color="#3b7ef0"/>
+      <stop offset="1" stop-color="#12235f"/>
     </radialGradient>
 
-    <linearGradient id="rim" x1="0" y1="0" x2="0.4" y2="1">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0.34"/>
-      <stop offset="0.55" stop-color="#ffffff" stop-opacity="0.05"/>
-      <stop offset="1" stop-color="#ffffff" stop-opacity="0.12"/>
+    <!-- The ring travels, so its gradient is in user space rather than per
+         shape: the two halves are one continuous band, not two that each
+         restart at violet. -->
+    <linearGradient id="ringg" gradientUnits="userSpaceOnUse" x1="140" y1="800" x2="890" y2="230">
+      <stop offset="0" stop-color="#7c5cf5"/>
+      <stop offset="0.5" stop-color="#c0a8ff"/>
+      <stop offset="1" stop-color="#8b6bf7"/>
     </linearGradient>
 
-    <!-- The brand run, blue -> lavender -> coral, in the mark's own
-         coordinates: one gradient across the whole mark. Per-shape
-         (objectBoundingBox) gradients restart on every path, which stripes the
-         prongs against the waves. -->
-    <linearGradient id="brand" gradientUnits="userSpaceOnUse" x1="70" y1="430" x2="450" y2="90">
-      <stop offset="0" stop-color="#3d9bff"/>
-      <stop offset="0.42" stop-color="#8aa0f2"/>
-      <stop offset="0.62" stop-color="#bd86e8"/>
-      <stop offset="1" stop-color="#ff5a66"/>
+    <!-- Catches the dark limb so the sphere does not dissolve into a dark
+         background. -->
+    <linearGradient id="rimlight" gradientUnits="userSpaceOnUse" x1="330" y1="330" x2="740" y2="740">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
+      <stop offset="1" stop-color="#a78bfa" stop-opacity="0.85"/>
     </linearGradient>
 
-    <filter id="glow" x="-25%" y="-25%" width="150%" height="150%">
-      <feGaussianBlur stdDeviation="14" result="b"/>
-      <feColorMatrix in="b" type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 0.6 0"/>
-    </filter>
+    <!-- The half of the ring that passes in front. In the ring's own rotated
+         frame that is simply everything below its major axis. -->
+    <mask id="front"><rect x="-560" y="0" width="1120" height="600" fill="#fff"/></mask>
   </defs>
 
-  <rect x="40" y="40" width="944" height="944" rx="150" fill="url(#tile)"/>
-  <rect x="40" y="40" width="944" height="944" rx="150" fill="url(#sheen)"/>
-  <rect x="43" y="43" width="938" height="938" rx="147" fill="none" stroke="url(#rim)" stroke-width="6"/>
-
-  <!-- The mark is authored in a 512 box; this centres it optically (a little
-       above the middle, since the waves carry the visual weight). -->
-  <g transform="translate(508 500) scale(1.55) translate(-259 -249)">
-    <!-- Painted twice: once blurred, for the bloom the glyph needs to lift off
-         a dark tile, then again sharp on top. -->
-    <g filter="url(#glow)" opacity="0.55" fill="url(#brand)">
-      <path d="M256 36 C270 96 278 150 278 200 L278 300 L234 300 L234 200 C234 150 242 96 256 36 Z"/>
-      <path d="M100 88 C112 172 154 238 246 248 L246 284 C130 274 84 180 86 106 Z"/>
-      <path d="M412 88 C400 172 358 238 266 248 L266 284 C382 274 428 180 426 106 Z"/>
-      <path d="M234 290 L278 290 L270 412 L242 412 Z"/>
-      <path d="M52 356 C140 404 250 416 326 388 C388 366 434 334 466 296 C446 356 392 406 324 424 C240 446 122 408 52 356 Z"/>
-      <path d="M208 432 C272 462 340 456 388 424 C418 404 440 384 460 362 C446 406 410 442 358 462 C304 482 246 462 208 432 Z"/>
+  <!-- Scaled up from the 1024 box: the ring is tilted 38 degrees so the whole
+       object is roughly square and fills the canvas the way the icons beside it
+       do. A shallower tilt leaves the top and bottom of the icon empty, which
+       is what makes an icon look low resolution next to its neighbours. -->
+  <g transform="translate(512 512) scale(1.20) translate(-512 -512)">
+    <g transform="translate(512 512) rotate(-38)">
+      <ellipse cx="0" cy="0" rx="470" ry="148" fill="none" stroke="url(#ringg)" stroke-width="42"/>
     </g>
-    <g fill="url(#brand)">
-      <path d="M256 36 C270 96 278 150 278 200 L278 300 L234 300 L234 200 C234 150 242 96 256 36 Z"/>
-      <path d="M100 88 C112 172 154 238 246 248 L246 284 C130 274 84 180 86 106 Z"/>
-      <path d="M412 88 C400 172 358 238 266 248 L266 284 C382 274 428 180 426 106 Z"/>
-      <path d="M234 290 L278 290 L270 412 L242 412 Z"/>
-      <path d="M52 356 C140 404 250 416 326 388 C388 366 434 334 466 296 C446 356 392 406 324 424 C240 446 122 408 52 356 Z"/>
-      <path d="M208 432 C272 462 340 456 388 424 C418 404 440 384 460 362 C446 406 410 442 358 462 C304 482 246 462 208 432 Z"/>
+    <circle cx="512" cy="512" r="285" fill="url(#ball)"/>
+    <circle cx="512" cy="512" r="285" fill="none" stroke="url(#rimlight)" stroke-width="14"/>
+    <g transform="translate(512 512) rotate(-38)" mask="url(#front)">
+      <ellipse cx="0" cy="0" rx="470" ry="148" fill="none" stroke="url(#ringg)" stroke-width="42"/>
     </g>
   </g>
 </svg>
