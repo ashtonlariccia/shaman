@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  The same icon redrawn for 48px and below (taskbar, tab strip, Alt-Tab).
+
+  Three changes from icon.svg, all of them about surviving the downsample:
+  the mark is larger and stroked, so no limb is thinner than a pixel; the
+  second wave is dropped, since two of them merge into a smudge; and the
+  bloom and rim highlight are gone, because at this size they only lower
+  contrast between the glyph and the tile.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <defs>
+    <linearGradient id="tile" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2b2f5e"/>
+      <stop offset="0.5" stop-color="#171a38"/>
+      <stop offset="1" stop-color="#0c0e20"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx="0.22" cy="0.14" r="0.75">
+      <stop offset="0" stop-color="#8ea6ff" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#8ea6ff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="brand" gradientUnits="userSpaceOnUse" x1="70" y1="430" x2="450" y2="90">
+      <stop offset="0" stop-color="#3d9bff"/>
+      <stop offset="0.42" stop-color="#8aa0f2"/>
+      <stop offset="0.62" stop-color="#bd86e8"/>
+      <stop offset="1" stop-color="#ff5a66"/>
+    </linearGradient>
+  </defs>
+
+  <rect x="40" y="40" width="944" height="944" rx="140" fill="url(#tile)"/>
+  <rect x="40" y="40" width="944" height="944" rx="140" fill="url(#sheen)"/>
+
+  <g transform="translate(512 506) scale(1.70) translate(-259 -232)">
+    <g fill="url(#brand)" stroke="url(#brand)" stroke-width="16" stroke-linejoin="round">
+      <path d="M256 36 C270 96 278 150 278 200 L278 300 L234 300 L234 200 C234 150 242 96 256 36 Z"/>
+      <path d="M100 88 C112 172 154 238 246 248 L246 284 C130 274 84 180 86 106 Z"/>
+      <path d="M412 88 C400 172 358 238 266 248 L266 284 C382 274 428 180 426 106 Z"/>
+      <path d="M234 290 L278 290 L270 412 L242 412 Z"/>
+      <path d="M52 356 C140 404 250 416 326 388 C388 366 434 334 466 296 C446 356 392 406 324 424 C240 446 122 408 52 356 Z"/>
+    </g>
+  </g>
+</svg>

@@ -315,27 +315,37 @@ Already present on the current dev machine:
 
 ## Icons and artwork
 
-Two source files, and they are not interchangeable:
+The icon is drawn, not cut: two SVG masters, rasterised into the set Tauri
+bundles.
 
 | File | What it is |
 |---|---|
-| `icons/source.png` | The original full trident-and-waves artwork, 1024². The master — everything else is cut from it. |
-| `icons/source-waves.png` | Just the two waves, centred on a square canvas. **This is what the app icon is generated from.** |
+| `icons/icon.svg` | The master. The trident-and-waves mark on a Fluent tile; everything 64px and up comes from here. |
+| `icons/icon-small.svg` | The same icon redrawn for 48px and below: mark scaled up and stroked, one wave instead of two, no bloom or rim highlight. |
+| `icons/source.png` | The original trident-and-waves artwork, 1024². Provenance for the mark — nothing is generated from it any more. |
+| `icons/source-waves.png` | Just the two waves. What the icon used to be cut from; kept so the older icons can be traced back. |
+
+Regenerate the whole set after changing either master:
+
+```bash
+bash scripts/icons.sh
+```
+
+It wants Chrome or Edge (headless, for the rasterising — set `CHROME` to pick a
+different one) and Python with Pillow. `tauri icon` is no longer used: it
+resamples a single bitmap into every size, which is what left the small icons
+smeared, and it writes `android/` and `ios/` directories this project has no use
+for.
+
+Two things about the design are deliberate, and a redraw should keep them:
+
+- **The tile is indigo.** Windows Terminal's is near-black and PowerShell's is
+  royal blue. Sharing their shape and lighting is the point; being confused with
+  them in a taskbar is not.
+- **Small sizes are a separate drawing.** The mark is mostly thin tapered limbs,
+  and below about 64px they fall under a pixel and dissolve into the tile.
+  `SMALL_BELOW` in `scripts/icons.py` is where the switch happens.
 
 The logo appears in the app icon only. The title bar carries no mark and the
 empty stage no watermark: both were dropped, so the chrome is menus and pins and
 nothing else.
-
-Regenerate the icon set after changing the square source:
-
-```bash
-npm.cmd run tauri -- icon crates/shaman-app/icons/source-waves.png -o crates/shaman-app/icons
-```
-
-That command also writes `android/` and `ios/` directories. This project targets
-neither — delete them, or they turn up as untracked clutter on the next
-`git status`.
-
-The mark is roughly 2.9:1, so in a square icon it is necessarily a band across
-the middle: legible at 128px, thin at 32px. Filling the square would mean
-distorting it.
