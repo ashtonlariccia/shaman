@@ -9,6 +9,7 @@ mod imp {
     // for token and named-pipe work.
     extern "system" {
         fn SetDefaultDllDirectories(directory_flags: u32) -> i32;
+        fn GetModuleHandleW(module_name: *const u16) -> *mut core::ffi::c_void;
     }
 
     /// Application directory + System32 + any explicitly added directories.
@@ -33,7 +34,9 @@ mod imp {
     /// else's console host, and spawning a shell hung forever at 0% CPU with no
     /// error — one of the least debuggable failure modes available.
     ///
-    /// Restricting the search order pins us to the OS ConPTY in `kernel32`.
+    /// Restricting the search order leaves two candidates: the `conpty.dll`
+    /// Shaman ships beside its own exe (`scripts/fetch-conpty.sh`), and failing
+    /// that, the OS ConPTY in `kernel32`. Never one from `PATH`.
     ///
     /// This also closes a genuine DLL-planting hole. That matters more than
     /// usual here, because Shaman is intended to run elevated.
@@ -52,14 +55,28 @@ mod imp {
             }
         });
     }
+
+    /// Whether the bundled `conpty.dll` is the one in use, rather than the OS
+    /// copy in `kernel32`. Only meaningful once a PTY has been opened, which is
+    /// what makes portable-pty load it.
+    pub fn bundled_conpty_loaded() -> bool {
+        let name: Vec<u16> = "conpty.dll".encode_utf16().chain([0]).collect();
+        // SAFETY: NUL-terminated wide string that outlives the call; the
+        // returned handle is only compared, never used or freed.
+        !unsafe { GetModuleHandleW(name.as_ptr()) }.is_null()
+    }
 }
 
 #[cfg(not(windows))]
 mod imp {
     pub fn harden_dll_search() {}
+
+    pub fn bundled_conpty_loaded() -> bool {
+        false
+    }
 }
 
-pub use imp::harden_dll_search;
+pub use imp::{bundled_conpty_loaded, harden_dll_search};
 
 /// Fine-grained waits, for as long as a guard is held.
 #[cfg(windows)]

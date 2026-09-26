@@ -78,6 +78,8 @@
   });
 
   let profiles = $state<ShellProfile[]>([]);
+  /** Set only when launched by scripts/bench.ps1; see lib/bench.ts. */
+  let benchConfig = $state<import("./lib/bench").BenchConfig | null>(null);
   let manageOpen = $state(false);
   let hostKeysOpen = $state(false);
   let appearanceOpen = $state(false);
@@ -370,6 +372,14 @@
         detail: `APP_READY profiles=${profiles.length} sessions=${sessions.slots.length} pins=${pins.list.length}`,
       }).catch(() => {});
 
+      benchConfig = await invoke<import("./lib/bench").BenchConfig | null>("bench_config").catch(
+        () => null,
+      );
+      if (benchConfig) {
+        const profile = profiles.find((p) => p.id === benchConfig!.profileId);
+        if (profile) sessions.open(profile);
+      }
+
       // Warm the terminal chunk now that the window is up and idle, so the
       // first terminal does not pay for the split second time.
       const idle = window.requestIdleCallback ?? ((fn: () => void) => setTimeout(fn, 200));
@@ -485,6 +495,7 @@
             ongone={() => sessions.terminals.delete(slot.key)}
             onpasterequest={() => void pasteInto(sessions.terminals.get(slot.key))}
             oncopyrequest={() => void copyFrom(sessions.terminals.get(slot.key), true)}
+            bench={benchConfig ?? undefined}
           />
         {/each}
       {/if}

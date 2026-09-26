@@ -2,6 +2,7 @@
 // tracing output stays visible.
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+mod bench;
 mod commands;
 
 /// Frontend liveness beacon.
@@ -90,7 +91,8 @@ fn main() {
         .init();
 
     // Do this first, before anything can trigger a DLL load: it pins us to the
-    // OS ConPTY instead of whatever conpty.dll happens to sit on PATH.
+    // conpty.dll shipped beside shaman.exe (or the OS one), never to whatever
+    // conpty.dll happens to sit on PATH.
     shaman_core::harden_dll_search();
 
     #[cfg(debug_assertions)]
@@ -147,7 +149,13 @@ fn main() {
             commands::session_close,
             commands::session_detach,
             commands::session_attach,
+            commands::open_link,
             commands::quit_app,
+            bench::bench_config,
+            bench::bench_conpty,
+            bench::bench_ping,
+            bench::bench_ipc_flood,
+            bench::bench_report,
         ])
         .run(tauri::generate_context!())
         .expect("failed to start Shaman");

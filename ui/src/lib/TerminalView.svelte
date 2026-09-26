@@ -10,6 +10,8 @@
   import type { TerminalApi } from "./terminalApi";
   import { CLEAR_LINE, lineEditorFor } from "./lineEditor";
   import { installTerminalQueries } from "./termQueries";
+  import { installLinks, type LinkHover } from "./links";
+  import type { BenchConfig } from "./bench";
 
   import type { SshRequest } from "./ConnectDialog.svelte";
   import type { Adoption } from "./slots";
@@ -39,6 +41,8 @@
     onpasterequest?: () => void;
     /** Right-click with a selection: copy it. */
     oncopyrequest?: () => void;
+    /** Set only under `SHAMAN_BENCH`: run the performance harness in this tab. */
+    bench?: BenchConfig;
   };
 
   let {
@@ -53,12 +57,15 @@
     ongone,
     onpasterequest,
     oncopyrequest,
+    bench,
   }: Props = $props();
 
   let host: HTMLDivElement;
   let term: Terminal | undefined;
   let fit: FitAddon | undefined;
   let sessionId: number | null = null;
+  /** The link under the pointer, if any: its real target is shown before it is followed. */
+  let linkHover = $state<LinkHover | null>(null);
 
   function syncSize() {
     if (!term || !fit || sessionId === null) return;
@@ -196,6 +203,13 @@
     // termQueries.ts; without them a remote nvim paints in 256 colours.
     const uninstallQueries = installTerminalQueries(t, toShell);
 
+    const uninstallLinks = installLinks(t, {
+      onhover: (h) => (linkHover = h),
+      open: (url) => {
+        invoke("open_link", { url }).catch((e) => console.warn("link not opened", e));
+      },
+    });
+
     function releaseEscape(send: boolean) {
       if (!escapeHeld) return;
       escapeHeld = false;
@@ -243,12 +257,16 @@
     /** Handed to another window: unmounting must not close the session. */
     let detached = false;
 
+    /** The benchmark's view of the output stream; null outside a bench run. */
+    let tap: ((bytes: Uint8Array) => void) | null = null;
+
     const channel = new Channel<ArrayBuffer | number[]>();
     channel.onmessage = (message) => {
       const bytes =
         message instanceof ArrayBuffer
           ? new Uint8Array(message)
           : Uint8Array.from(message as number[]);
+      tap?.(bytes);
       t.write(bytes);
     };
 
@@ -317,6 +335,21 @@
         });
 
         if (active) t.focus();
+
+        if (bench) {
+          const config = bench;
+          const { runBench } = await import("./bench");
+          const report = await runBench({
+            config,
+            term: t,
+            send: toShell,
+            tap: (fn) => (tap = fn),
+            conptyAlone: () =>
+              invoke("bench_conpty", { command: config.command, cols: t.cols, rows: t.rows }),
+            ping: () => invoke("bench_ping"),
+          });
+          await invoke("bench_report", { report });
+        }
       } catch (e) {
         // ssh_connect rejects with a structured { kind, message, fingerprint };
         // local shells reject with a plain string.
@@ -350,6 +383,7 @@
       clearTimeout(escapeTimer);
       host.removeEventListener("contextmenu", onContextMenu, { capture: true });
       uninstallQueries();
+      uninstallLinks();
       observer.disconnect();
       ongone?.();
       if (sessionId !== null && !detached) void invoke("session_close", { id: sessionId });
@@ -396,6 +430,22 @@
 
 <div class="pane" class:hidden={!active}>
   <div class="term" bind:this={host}></div>
+  {#if linkHover}
+    <!-- Beside the pointer, on whichever side has room, so a link near the
+         right or bottom edge does not push its card off the window. -->
+    {@const flipX = linkHover.x > window.innerWidth / 2}
+    {@const flipY = linkHover.y > window.innerHeight - 80}
+    <div
+      class="link-tip"
+      style:left={flipX ? null : `${linkHover.x + 14}px`}
+      style:right={flipX ? `${window.innerWidth - linkHover.x + 14}px` : null}
+      style:top={flipY ? null : `${linkHover.y + 18}px`}
+      style:bottom={flipY ? `${window.innerHeight - linkHover.y + 12}px` : null}
+    >
+      <span class="link-url">{linkHover.url}</span>
+      <span class="link-hint">Ctrl+click to open</span>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -415,5 +465,35 @@
   .term {
     height: 100%;
     width: 100%;
+  }
+
+  /* The sidebar's hover card, reused: same surface, same layer. It shows the
+     real target because an OSC 8 link's text need not resemble it. */
+  .link-tip {
+    position: fixed;
+    z-index: 1400;
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    max-width: min(480px, calc(100vw - 32px));
+    padding: 0.35rem 0.55rem;
+    background: var(--bg-menu);
+    border: 1px solid var(--border);
+    border-radius: var(--chip-radius);
+    box-shadow: 0 6px 18px #0009;
+    pointer-events: none;
+  }
+
+  .link-url {
+    font-size: 0.8rem;
+    color: var(--fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .link-hint {
+    font-size: 0.68rem;
+    color: var(--fg-dim);
   }
 </style>

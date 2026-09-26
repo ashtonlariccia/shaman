@@ -92,6 +92,16 @@ impl PtySession {
             pixel_height: 0,
         })?;
 
+        static REPORTED: std::sync::Once = std::sync::Once::new();
+        REPORTED.call_once(|| {
+            let host = if crate::win::bundled_conpty_loaded() {
+                "the bundled conpty.dll + OpenConsole.exe"
+            } else {
+                "the OS ConPTY (no conpty.dll beside shaman.exe)"
+            };
+            tracing::info!("local terminals are hosted by {host}");
+        });
+
         let mut builder = CommandBuilder::new(&opts.program);
         for arg in &opts.args {
             builder.arg(arg);
@@ -468,6 +478,15 @@ mod tests {
                 panic!("never saw the marker; got:\n{seen:?}");
             }
             thread::sleep(Duration::from_millis(50));
+        }
+
+        // check.sh stages the bundled host beside the test binary and sets
+        // this, so the round trip above is proven against what ships.
+        if std::env::var_os("SHAMAN_EXPECT_BUNDLED_CONPTY").is_some() {
+            assert!(
+                crate::win::bundled_conpty_loaded(),
+                "the bundled conpty.dll was staged but the OS ConPTY loaded instead"
+            );
         }
 
         session.kill().ok();

@@ -47,6 +47,11 @@
     ],
     "externalBin": [
       "binaries/shaman-helper"
-    ]
+    ],
+    "resources": {
+      "binaries/conpty/conpty.dll": "conpty.dll",
+      "binaries/conpty/OpenConsole.exe": "OpenConsole.exe",
+      "../../third_party/conpty/LICENSE": "licenses/conpty-LICENSE.txt"
+    }
   }
 }

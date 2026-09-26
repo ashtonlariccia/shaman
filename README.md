@@ -89,6 +89,15 @@ To select text while a program is reading the mouse itself (`vim` with
 `set mouse=a`, `less`, `htop`), **hold Shift while dragging**: that keeps the
 drag in the terminal instead of forwarding it to the program.
 
+## Links
+
+**Ctrl+click opens a link** in the default browser, whether it is a URL printed
+as plain text or an OSC 8 hyperlink a program attached to some text (`gh`,
+`ls --hyperlink`, Claude Code). A plain click stays a click, for selecting and
+for programs reading the mouse. Hovering a link shows where it really goes,
+since an OSC 8 link's visible text can say anything. Only `http` and `https`
+are ever opened (`crates/shaman-core/src/links.rs`).
+
 ## Clearing the line
 
 **`Esc Esc` discards the command you are typing.** What that takes depends on the
@@ -114,8 +123,21 @@ in normal mode".
 
 Terminal output is batched in Rust before it crosses into the webview: a batch
 is sent when the shell goes quiet for ~3ms, when a byte has waited ~16ms (one
-frame), or at 64KB. Quiet-first is what keeps an echoed keystroke immediate
+frame), or at 512KB. A chunk that arrives after ~3ms of quiet (the echo of a
+keystroke, almost always) is not batched at all and leaves the moment it lands,
 while a build log still costs roughly one message per frame.
+
+`scripts/bench.ps1` measures this, stage by stage: ConPTY alone, keystroke echo,
+a flood through the whole pipeline, the IPC path alone, and xterm alone. It
+opens a window for ~30s and loads several cores. Measured on this machine: a
+keystroke reaches the screen in ~6-7ms, local shells top out at ConPTY's ~5MB/s
+(every Windows terminal shares that ceiling), and xterm itself renders ~25MB/s.
+
+Local shells run on the **ConPTY bundled beside `shaman.exe`** (`conpty.dll` +
+`OpenConsole.exe`, the host Windows Terminal ships), fetched by version and hash
+by `scripts/fetch-conpty.sh`, so escape-sequence handling and resize reflow do
+not depend on how old the machine's Windows build is. Without them Shaman falls
+back to the copy in Windows; the log says which one loaded.
 
 Those deadlines only mean anything because Shaman raises the process timer
 resolution to 1ms while a session is open (`win::TimerResolution`). Windows'

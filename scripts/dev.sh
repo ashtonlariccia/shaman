@@ -10,6 +10,9 @@ cd "$(dirname "$0")/.."
 # shellcheck source=scripts/_npm.sh
 source "$(dirname "$0")/_npm.sh"
 
+# conpty.dll + OpenConsole.exe are bundle resources; tauri-build fails without them.
+bash "$(dirname "$0")/fetch-conpty.sh"
+
 echo "==> starting Shaman dev (Windows toolchain via WSL interop)"
 echo "    a window will open on the Windows desktop and take focus"
 

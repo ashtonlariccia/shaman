@@ -12,6 +12,9 @@ cd "$(dirname "$0")/.."
 # shellcheck source=scripts/_npm.sh
 source "$(dirname "$0")/_npm.sh"
 
+# conpty.dll + OpenConsole.exe are bundle resources; tauri-build fails without them.
+bash "$(dirname "$0")/fetch-conpty.sh"
+
 # The helper must sit beside shaman.exe: an elevated Shaman cannot open an
 # ordinary terminal without it. `tauri build` only builds the app crate.
 echo "==> building shaman-helper"

@@ -11,6 +11,7 @@ pub mod connections;
 pub mod elevate;
 pub mod helper;
 pub mod known_hosts;
+pub mod links;
 pub mod pins;
 pub mod profiles;
 pub mod proto;

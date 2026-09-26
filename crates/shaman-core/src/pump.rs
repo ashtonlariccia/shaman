@@ -19,6 +19,18 @@
 //! within a few milliseconds *and* lets `max_delay` be set generously, which is
 //! what collapses a build log into roughly one message per rendered frame
 //! rather than two or three.
+//!
+//! **A chunk that breaks a silence is not batched at all.** If nothing has
+//! arrived for `idle_gap`, whatever came before has already been flushed, and
+//! this is most likely the answer to a keystroke -- so it is sent the moment it
+//! lands. Measured (`scripts/bench.ps1`), that was most of the echo latency:
+//! ConPTY hands back an echoed character in ~0.2ms, and the idle gap was then
+//! holding it for 3ms more to see whether anything followed, which for an echo
+//! nothing does. It costs no extra messages: a chunk after `idle_gap` of quiet
+//! always started a fresh batch anyway, and now that batch simply does not
+//! wait. A flood is unaffected -- its reads arrive back to back, so only the
+//! first comes after a silence. xterm draws once per frame whatever the message
+//! count, so a redraw that happens to be split across two still paints together.
 
 use std::sync::mpsc::{Receiver, RecvTimeoutError};
 use std::thread::{self, JoinHandle};
@@ -47,7 +59,11 @@ impl Default for CoalesceConfig {
             // than the renderer can draw it, and every extra message costs a
             // trip across the IPC boundary.
             max_delay: Duration::from_millis(16),
-            max_bytes: 64 * 1024,
+            // A backstop, not the usual cut: at ConPTY's ~5MB/s a frame's worth
+            // is ~80KB. Each message above 1KB costs the webview an eval plus a
+            // fetch, and a flood cut at 64KB stuttered (p95 frame 33ms in
+            // scripts/bench.ps1); cutting on time alone brought it to ~20ms.
+            max_bytes: 512 * 1024,
         }
     }
 }
@@ -66,9 +82,22 @@ where
         // released when the session ends.
         let _timer = TimerResolution::acquire();
 
+        // When the last chunk arrived. None until the first, which counts as
+        // breaking a silence like any other.
+        let mut last_arrival: Option<Instant> = None;
+
         // Blocks until there is something to send; an idle terminal costs
         // nothing. Ends when the sender is dropped.
         while let Ok(first) = rx.recv() {
+            let arrived = Instant::now();
+            let after_silence =
+                last_arrival.is_none_or(|last| arrived.duration_since(last) >= cfg.idle_gap);
+            last_arrival = Some(arrived);
+            if after_silence {
+                sink(first);
+                continue;
+            }
+
             let mut buf = first;
             let deadline = Instant::now() + cfg.max_delay;
             let mut disconnected = false;
@@ -83,7 +112,10 @@ where
                 // is itself a reason to flush.
                 let wait = (deadline - now).min(cfg.idle_gap);
                 match rx.recv_timeout(wait) {
-                    Ok(more) => buf.extend_from_slice(&more),
+                    Ok(more) => {
+                        last_arrival = Some(Instant::now());
+                        buf.extend_from_slice(&more);
+                    }
                     Err(RecvTimeoutError::Timeout) => break,
                     Err(RecvTimeoutError::Disconnected) => {
                         disconnected = true;
@@ -187,10 +219,13 @@ mod tests {
         };
         let handle = spawn(rx, cfg, sink_into(&out));
 
+        // The first chunk breaks a silence and leaves on its own; the prompt
+        // right behind it is the one the idle gap has to release.
+        tx.send(b"ls".to_vec()).unwrap();
         tx.send(b"$ ".to_vec()).unwrap();
 
         let start = Instant::now();
-        while out.lock().unwrap().is_empty() {
+        while out.lock().unwrap().len() < 2 {
             assert!(
                 start.elapsed() < Duration::from_secs(2),
                 "quiet stream never flushed; it waited for max_delay"
@@ -199,9 +234,62 @@ mod tests {
         }
 
         // The sender is still alive, so this was not a shutdown flush.
-        assert_eq!(out.lock().unwrap().concat(), b"$ ".to_vec());
+        assert_eq!(out.lock().unwrap()[1], b"$ ".to_vec());
         drop(tx);
         handle.join().unwrap();
+    }
+
+    /// The answer to a keystroke, arriving after a silence, is not held for the
+    /// idle gap -- it goes the moment it lands.
+    #[test]
+    fn a_chunk_after_silence_is_sent_at_once() {
+        let (tx, rx) = mpsc::channel();
+        let out = batches();
+        let cfg = CoalesceConfig {
+            idle_gap: Duration::from_millis(50),
+            // Long enough that a flush can only come from the idle gap.
+            max_delay: Duration::from_secs(30),
+            max_bytes: 1024 * 1024,
+        };
+        let handle = spawn(rx, cfg, sink_into(&out));
+
+        // Batched, "b" would have joined "a" -- it lands well within the gap.
+        // Leading-edge, "a" has already gone by the time "b" arrives.
+        tx.send(b"a".to_vec()).unwrap();
+        tx.send(b"b".to_vec()).unwrap();
+
+        let start = Instant::now();
+        while out.lock().unwrap().len() < 2 {
+            assert!(start.elapsed() < Duration::from_secs(5), "never flushed");
+            thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!(*out.lock().unwrap(), vec![b"a".to_vec(), b"b".to_vec()]);
+
+        drop(tx);
+        handle.join().unwrap();
+    }
+
+    /// Only a flood's first chunk comes after silence; the rest still batch.
+    #[test]
+    fn a_flood_after_silence_still_coalesces() {
+        let (tx, rx) = mpsc::channel();
+        let out = batches();
+        let handle = spawn(rx, CoalesceConfig::default(), sink_into(&out));
+
+        for _ in 0..2000 {
+            tx.send(vec![b'z'; 32]).unwrap();
+        }
+        drop(tx);
+        handle.join().unwrap();
+
+        let batches = out.lock().unwrap();
+        assert_eq!(batches.iter().map(Vec::len).sum::<usize>(), 64_000);
+        assert_eq!(batches[0].len(), 32, "the leading chunk goes alone");
+        assert!(
+            batches.len() < 10,
+            "expected coalescing, got {}",
+            batches.len()
+        );
     }
 
     #[test]

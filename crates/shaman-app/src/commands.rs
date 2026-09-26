@@ -829,6 +829,15 @@ pub fn session_close(sessions: State<'_, Sessions>, id: u64) -> Result<(), Strin
     Ok(())
 }
 
+/// Open a link Ctrl+clicked in a terminal, in the default browser.
+///
+/// The webview checks too, but this is the check that counts: only http(s)
+/// reaches ShellExecute (see `shaman_core::links`).
+#[tauri::command]
+pub fn open_link(url: String) -> Result<(), String> {
+    shaman_core::links::open(&url).inspect_err(|err| tracing::warn!("{err}: {url}"))
+}
+
 /// Quit the application (File -> Exit).
 ///
 /// Sessions are dropped on the way out, and each drop closes its job object,
