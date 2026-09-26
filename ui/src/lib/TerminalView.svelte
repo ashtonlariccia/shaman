@@ -14,6 +14,7 @@
   import type { SshRequest } from "./ConnectDialog.svelte";
   import type { Adoption } from "./slots";
   import { terminalTheme } from "./theme";
+  import { setCellBackgroundOpacity, translucentCellBackgrounds } from "./cellBackgrounds";
   import type { AppearanceStore } from "./state/appearance.svelte";
 
   type Props = {
@@ -112,6 +113,7 @@
         webgl.dispose();
       });
       t.loadAddon(webgl);
+      translucentCellBackgrounds(webgl);
     } catch (e) {
       console.warn("webgl renderer unavailable, using fallback", e);
     }
@@ -366,6 +368,9 @@
     const a = appearance.current;
     const fontStack = appearance.fontStack;
     const theme = terminalTheme(a);
+    // Before the theme lands: setting it is what triggers the full redraw
+    // that picks the new opacity up.
+    setCellBackgroundOpacity(appearance.alpha);
 
     const t = term;
     if (!t) return;

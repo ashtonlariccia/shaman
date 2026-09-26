@@ -37,9 +37,9 @@ export const BACKGROUND = "#242424";
  * and nobody can tell it was drawn. Any terminal whose background is opaque
  * has been getting away with this for free.
  *
- * The rectangle stays opaque below 100% opacity, so a styled run is a slightly
- * more solid patch on a translucent window. That is the residue of the bug we
- * cannot reach from here; it is not visible at 100%.
+ * cellBackgrounds.ts goes further and drops a rectangle in this colour
+ * outright, so below 100% opacity a styled run is not even a faintly more
+ * solid patch.
  */
 const TRANSPARENT_BACKGROUND = `${BACKGROUND}00`;
 
@@ -71,9 +71,9 @@ export function terminalTheme(appearance: Appearance): ITheme {
     // opacity. If both did, the terminal would end up more opaque than the
     // sidebar beside it at the same setting.
     //
-    // Only the *default* background goes transparent. Cells a program has
-    // coloured itself keep their own background, which is what you want: a
-    // `ls` listing stays readable through a translucent window.
+    // Only the *default* background goes transparent here. Cells a program
+    // has coloured itself keep their colour, at the window's opacity -- see
+    // cellBackgrounds.ts.
     //
     // Transparent, but not colourless -- see TRANSPARENT_BACKGROUND.
     background: TRANSPARENT_BACKGROUND,
