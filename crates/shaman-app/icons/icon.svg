@@ -1,59 +1,55 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Shaman's app icon: a ringed planet, free-floating on transparency.
+  Shaman's app icon: a terminal window, free-floating on transparency.
+
+  The shape is the Material Icon Theme's console glyph (a framed screen with a
+  title bar, a prompt chevron and a cursor) redrawn in Shaman's blue and violet.
 
   No tile. Windows 11 puts its own apps in both camps, and the tile version of
-  this icon read as a sticker next to the Fluent objects around it. The object
-  has to carry its own contrast instead: a light blue terminator on the sphere
-  and a violet ring that stays legible on a light desktop and a dark taskbar
-  alike.
+  the earlier icon read as a sticker next to the Fluent objects around it. The
+  object has to carry its own contrast instead: a light blue frame that holds
+  up on a dark taskbar, around a navy screen that holds up on a light desktop.
 
   Sizes 48px and below come from icon-small.svg. scripts/icons.sh renders both
   into the PNG/ICO/ICNS set.
 -->
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
   <defs>
-    <!-- Fluent lights everything from the top left; the sphere's highlight sits
-         there and the shadow runs to the opposite limb. -->
-    <radialGradient id="ball" cx="0.33" cy="0.27" r="0.88">
+    <!-- Fluent lights everything from the top left; the frame's highlight sits
+         there and the shadow runs to the opposite corner. -->
+    <linearGradient id="frame" gradientUnits="userSpaceOnUse" x1="64" y1="112" x2="960" y2="912">
       <stop offset="0" stop-color="#9ccdff"/>
-      <stop offset="0.44" stop-color="#3b7ef0"/>
-      <stop offset="1" stop-color="#12235f"/>
-    </radialGradient>
-
-    <!-- The ring travels, so its gradient is in user space rather than per
-         shape: the two halves are one continuous band, not two that each
-         restart at violet. -->
-    <linearGradient id="ringg" gradientUnits="userSpaceOnUse" x1="140" y1="800" x2="890" y2="230">
-      <stop offset="0" stop-color="#7c5cf5"/>
-      <stop offset="0.5" stop-color="#c0a8ff"/>
-      <stop offset="1" stop-color="#8b6bf7"/>
+      <stop offset="0.5" stop-color="#3b7ef0"/>
+      <stop offset="1" stop-color="#2a3fa8"/>
     </linearGradient>
 
-    <!-- Catches the dark limb so the sphere does not dissolve into a dark
-         background. -->
-    <linearGradient id="rimlight" gradientUnits="userSpaceOnUse" x1="330" y1="330" x2="740" y2="740">
-      <stop offset="0" stop-color="#ffffff" stop-opacity="0"/>
-      <stop offset="1" stop-color="#a78bfa" stop-opacity="0.85"/>
+    <linearGradient id="screen" gradientUnits="userSpaceOnUse" x1="112" y1="288" x2="912" y2="864">
+      <stop offset="0" stop-color="#16296e"/>
+      <stop offset="1" stop-color="#0b1438"/>
     </linearGradient>
 
-    <!-- The half of the ring that passes in front. In the ring's own rotated
-         frame that is simply everything below its major axis. -->
-    <mask id="front"><rect x="-560" y="0" width="1120" height="600" fill="#fff"/></mask>
+    <linearGradient id="prompt" gradientUnits="userSpaceOnUse" x1="232" y1="728" x2="400" y2="424">
+      <stop offset="0" stop-color="#8b6bf7"/>
+      <stop offset="1" stop-color="#c0a8ff"/>
+    </linearGradient>
   </defs>
 
-  <!-- Scaled up from the 1024 box: the ring is tilted 38 degrees so the whole
-       object is roughly square and fills the canvas the way the icons beside it
-       do. A shallower tilt leaves the top and bottom of the icon empty, which
-       is what makes an icon look low resolution next to its neighbours. -->
-  <g transform="translate(512 512) scale(1.20) translate(-512 -512)">
-    <g transform="translate(512 512) rotate(-38)">
-      <ellipse cx="0" cy="0" rx="470" ry="148" fill="none" stroke="url(#ringg)" stroke-width="42"/>
-    </g>
-    <circle cx="512" cy="512" r="285" fill="url(#ball)"/>
-    <circle cx="512" cy="512" r="285" fill="none" stroke="url(#rimlight)" stroke-width="14"/>
-    <g transform="translate(512 512) rotate(-38)" mask="url(#front)">
-      <ellipse cx="0" cy="0" rx="470" ry="148" fill="none" stroke="url(#ringg)" stroke-width="42"/>
-    </g>
+  <!-- The window is 896 by 800: close enough to square that it reaches the
+       edges of the canvas the way the icons beside it do. A true 4:3 window
+       leaves the top and bottom empty, which is what makes an icon look low
+       resolution next to its neighbours. -->
+  <rect x="64" y="112" width="896" height="800" rx="96" fill="url(#frame)"/>
+
+  <!-- Title bar buttons, cut in the frame's own shadow colour. -->
+  <g fill="#12235f" fill-opacity="0.55">
+    <circle cx="176" cy="200" r="34"/>
+    <circle cx="288" cy="200" r="34"/>
+    <circle cx="400" cy="200" r="34"/>
   </g>
+
+  <rect x="112" y="288" width="800" height="576" rx="56" fill="url(#screen)"/>
+
+  <polyline points="232,424 400,576 232,728" fill="none" stroke="url(#prompt)"
+            stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="488" y="664" width="288" height="72" rx="36" fill="#e6ecff"/>
 </svg>

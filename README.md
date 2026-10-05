@@ -337,13 +337,15 @@ Already present on the current dev machine:
 
 ## Icons and artwork
 
-The icon is a ringed planet, drawn as SVG and rasterised into the set Tauri
-bundles. It floats on transparency — no tile.
+The icon is a terminal window — the Material Icon Theme's console glyph (framed
+screen, title bar, prompt chevron, cursor) redrawn in Shaman's blue and violet —
+drawn as SVG and rasterised into the set Tauri bundles. It floats on
+transparency — no tile.
 
 | File | What it is |
 |---|---|
 | `icons/icon.svg` | The master. Everything 64px and up comes from here. |
-| `icons/icon-small.svg` | The same planet redrawn for 48px and below: ring half again as thick, larger sphere, no rim light. |
+| `icons/icon-small.svg` | The same terminal redrawn for 48px and below: thicker frame, chevron and cursor half again as heavy, no title bar buttons. |
 | `icons/source.png` | The original trident-and-waves artwork, 1024². The mark the icon used to be cut from; kept so the older icons can be traced back. |
 | `icons/source-waves.png` | Just the two waves of that mark. Same story. |
 
@@ -361,16 +363,16 @@ for.
 
 Three things about the design are deliberate, and a redraw should keep them:
 
-- **It fills the canvas.** The ring is tilted 38 degrees so the object is
-  roughly square. A shallower tilt leaves the top and bottom of the icon empty,
-  and an icon that does not reach its own edges reads as low resolution next to
-  the ones beside it in the taskbar.
-- **It carries its own contrast.** With no tile behind it, the sphere has to
+- **It fills the canvas.** The window is 896 by 800, close enough to square
+  that it reaches the edges. A true 4:3 window leaves the top and bottom of the
+  icon empty, and an icon that does not reach its own edges reads as low
+  resolution next to the ones beside it in the taskbar.
+- **It carries its own contrast.** With no tile behind it, the window has to
   hold up on a white desktop and a black taskbar both: hence the light blue
-  terminator and the violet rim light on the dark limb.
-- **Small sizes are a separate drawing.** A 42-unit ring stroke is under a pixel
-  once the canvas is 16. `SMALL_BELOW` in `scripts/icons.py` is where the switch
-  happens.
+  frame around a navy screen.
+- **Small sizes are a separate drawing.** A 48-unit frame border is under a
+  pixel once the canvas is 16. `SMALL_BELOW` in `scripts/icons.py` is where the
+  switch happens.
 
 The logo appears in the app icon only. The title bar carries no mark and the
 empty stage no watermark: both were dropped, so the chrome is menus and pins and
