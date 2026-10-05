@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 """Rasterise the icon masters into the icon set Tauri bundles.
 
-Two masters feed this: icons/icon.svg for the large sizes and
-icons/icon-small.svg for anything a taskbar would show. SMALL_BELOW is where
-the switch happens.
+One master feeds this: icons/icon.svg, the Material Icon Theme's console
+icon. It is drawn on a 16-unit grid, so it needs no separate small-size
+drawing.
 
 SVG is rendered by headless Chrome (or Edge) because it is the only rasteriser
-on a stock Windows box that gets the gradients and the blur right; everything
-after that is Pillow.
+a stock Windows box is sure to have; everything after that is Pillow.
 """
 
 import io
@@ -22,15 +21,11 @@ from PIL import Image
 
 ICONS = Path(__file__).resolve().parent.parent / "crates" / "shaman-app" / "icons"
 
-# The masters are drawn at 1024 but rendered at twice that and downsampled.
-# Rendering each target size directly would be sharper in principle, but
-# Chrome's own downscaling is worse than Lanczos on the finished bitmap, and
-# the odd sizes (107, 142, 310) land on non-integer ratios either way.
+# The master is rendered once at 2048 and downsampled. Rendering each target
+# size directly would be sharper in principle, but Chrome's own downscaling is
+# worse than Lanczos on the finished bitmap, and the odd sizes (107, 142, 310)
+# land on non-integer ratios either way.
 MASTER_PX = 2048
-
-# Below this, the simplified master is used: the full one's thinnest limbs
-# fall under a pixel and dissolve.
-SMALL_BELOW = 72
 
 # name -> pixel size
 TARGETS = {
@@ -108,9 +103,11 @@ def render(svg: Path, work: Path) -> Image.Image:
         sys.exit(f"{svg.name}: headless render produced nothing")
     shot = Image.open(out).convert("RGBA")
     # Chrome renders a malformed SVG as a broken-image placeholder rather than
-    # failing, which otherwise ships as a set of blank icons. The middle of the
-    # tile is opaque in every version of the artwork.
-    if shot.getpixel((MASTER_PX // 2, MASTER_PX // 2))[3] == 0:
+    # failing, which otherwise ships as a set of blank icons. The placeholder
+    # is a small glyph in one corner; the artwork spans most of the canvas.
+    # (The centre is no use as a probe: the console's screen is see-through.)
+    box = shot.getchannel("A").getbbox()
+    if box is None or box[2] - box[0] < MASTER_PX // 2:
         sys.exit(f"{svg.name}: rendered blank -- is the SVG well formed?")
     return shot
 
@@ -118,11 +115,9 @@ def render(svg: Path, work: Path) -> Image.Image:
 def main() -> None:
     with tempfile.TemporaryDirectory() as tmp:
         work = Path(tmp)
-        large = render(ICONS / "icon.svg", work)
-        small = render(ICONS / "icon-small.svg", work)
+        master = render(ICONS / "icon.svg", work)
 
     def at(size: int) -> Image.Image:
-        master = small if size < SMALL_BELOW else large
         return master.resize((size, size), Image.LANCZOS)
 
     for name, size in sorted(TARGETS.items(), key=lambda kv: kv[1]):

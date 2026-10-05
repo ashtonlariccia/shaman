@@ -1,55 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
-  Shaman's app icon: a terminal window, free-floating on transparency.
+  Shaman's app icon: the `console` icon from Material Icon Theme (MIT),
+  unmodified. Copied from ../thread/ui/public/icons/console.svg.
 
-  The shape is the Material Icon Theme's console glyph (a framed screen with a
-  title bar, a prompt chevron and a cursor) redrawn in Shaman's blue and violet.
-
-  No tile. Windows 11 puts its own apps in both camps, and the tile version of
-  the earlier icon read as a sticker next to the Fluent objects around it. The
-  object has to carry its own contrast instead: a light blue frame that holds
-  up on a dark taskbar, around a navy screen that holds up on a light desktop.
-
-  Sizes 48px and below come from icon-small.svg. scripts/icons.sh renders both
-  into the PNG/ICO/ICNS set.
+  It is drawn on a 16-unit grid, so the one master serves every size.
+  scripts/icons.sh renders it into the PNG/ICO/ICNS set.
 -->
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
-  <defs>
-    <!-- Fluent lights everything from the top left; the frame's highlight sits
-         there and the shadow runs to the opposite corner. -->
-    <linearGradient id="frame" gradientUnits="userSpaceOnUse" x1="64" y1="112" x2="960" y2="912">
-      <stop offset="0" stop-color="#9ccdff"/>
-      <stop offset="0.5" stop-color="#3b7ef0"/>
-      <stop offset="1" stop-color="#2a3fa8"/>
-    </linearGradient>
-
-    <linearGradient id="screen" gradientUnits="userSpaceOnUse" x1="112" y1="288" x2="912" y2="864">
-      <stop offset="0" stop-color="#16296e"/>
-      <stop offset="1" stop-color="#0b1438"/>
-    </linearGradient>
-
-    <linearGradient id="prompt" gradientUnits="userSpaceOnUse" x1="232" y1="728" x2="400" y2="424">
-      <stop offset="0" stop-color="#8b6bf7"/>
-      <stop offset="1" stop-color="#c0a8ff"/>
-    </linearGradient>
-  </defs>
-
-  <!-- The window is 896 by 800: close enough to square that it reaches the
-       edges of the canvas the way the icons beside it do. A true 4:3 window
-       leaves the top and bottom empty, which is what makes an icon look low
-       resolution next to its neighbours. -->
-  <rect x="64" y="112" width="896" height="800" rx="96" fill="url(#frame)"/>
-
-  <!-- Title bar buttons, cut in the frame's own shadow colour. -->
-  <g fill="#12235f" fill-opacity="0.55">
-    <circle cx="176" cy="200" r="34"/>
-    <circle cx="288" cy="200" r="34"/>
-    <circle cx="400" cy="200" r="34"/>
-  </g>
-
-  <rect x="112" y="288" width="800" height="576" rx="56" fill="url(#screen)"/>
-
-  <polyline points="232,424 400,576 232,728" fill="none" stroke="url(#prompt)"
-            stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
-  <rect x="488" y="664" width="288" height="72" rx="36" fill="#e6ecff"/>
-</svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 16 16"><path fill="#ff7043" d="M2 2a1 1 0 0 0-1 1v10c0 .554.446 1 1 1h12c.554 0 1-.446 1-1V3a1 1 0 0 0-1-1zm0 3h12v8H2zm1 2 2 2-2 2 1 1 3-3-3-3zm5 3.5V12h5v-1.5z"/></svg>

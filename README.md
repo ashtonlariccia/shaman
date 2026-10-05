@@ -337,19 +337,18 @@ Already present on the current dev machine:
 
 ## Icons and artwork
 
-The icon is a terminal window — the Material Icon Theme's console glyph (framed
-screen, title bar, prompt chevron, cursor) redrawn in Shaman's blue and violet —
-drawn as SVG and rasterised into the set Tauri bundles. It floats on
+The icon is the `console` icon from
+[Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme)
+(MIT), unmodified, rasterised into the set Tauri bundles. It sits on
 transparency — no tile.
 
 | File | What it is |
 |---|---|
-| `icons/icon.svg` | The master. Everything 64px and up comes from here. |
-| `icons/icon-small.svg` | The same terminal redrawn for 48px and below: thicker frame, chevron and cursor half again as heavy, no title bar buttons. |
+| `icons/icon.svg` | The master, copied from the theme. It is drawn on a 16-unit grid, so it serves every size. |
 | `icons/source.png` | The original trident-and-waves artwork, 1024². The mark the icon used to be cut from; kept so the older icons can be traced back. |
 | `icons/source-waves.png` | Just the two waves of that mark. Same story. |
 
-Regenerate the whole set after changing either master:
+Regenerate the whole set after changing the master:
 
 ```bash
 bash scripts/icons.sh
@@ -357,22 +356,7 @@ bash scripts/icons.sh
 
 It wants Chrome or Edge (headless, for the rasterising — set `CHROME` to pick a
 different one) and Python with Pillow. `tauri icon` is no longer used: it
-resamples a single bitmap into every size, which is what left the small icons
-smeared, and it writes `android/` and `ios/` directories this project has no use
-for.
-
-Three things about the design are deliberate, and a redraw should keep them:
-
-- **It fills the canvas.** The window is 896 by 800, close enough to square
-  that it reaches the edges. A true 4:3 window leaves the top and bottom of the
-  icon empty, and an icon that does not reach its own edges reads as low
-  resolution next to the ones beside it in the taskbar.
-- **It carries its own contrast.** With no tile behind it, the window has to
-  hold up on a white desktop and a black taskbar both: hence the light blue
-  frame around a navy screen.
-- **Small sizes are a separate drawing.** A 48-unit frame border is under a
-  pixel once the canvas is 16. `SMALL_BELOW` in `scripts/icons.py` is where the
-  switch happens.
+writes `android/` and `ios/` directories this project has no use for.
 
 The logo appears in the app icon only. The title bar carries no mark and the
 empty stage no watermark: both were dropped, so the chrome is menus and pins and
