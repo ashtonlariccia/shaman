@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Rasterise the icon masters into the icon set Tauri bundles.
 
-One master feeds this: icons/icon.svg, the Material Icon Theme's console
-icon. It is drawn on a 16-unit grid, so it needs no separate small-size
-drawing.
+One master feeds this: icons/icon.svg, the Material Icon Theme's stan icon.
+It is a single flat shape, so it needs no separate small-size drawing.
 
 SVG is rendered by headless Chrome (or Edge) because it is the only rasteriser
 a stock Windows box is sure to have; everything after that is Pillow.
@@ -105,7 +104,7 @@ def render(svg: Path, work: Path) -> Image.Image:
     # Chrome renders a malformed SVG as a broken-image placeholder rather than
     # failing, which otherwise ships as a set of blank icons. The placeholder
     # is a small glyph in one corner; the artwork spans most of the canvas.
-    # (The centre is no use as a probe: the console's screen is see-through.)
+    # (The centre is no use as a probe: a mark can be see-through there.)
     box = shot.getchannel("A").getbbox()
     if box is None or box[2] - box[0] < MASTER_PX // 2:
         sys.exit(f"{svg.name}: rendered blank -- is the SVG well formed?")
