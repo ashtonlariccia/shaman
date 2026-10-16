@@ -337,14 +337,13 @@ Already present on the current dev machine:
 
 ## Icons and artwork
 
-The icon is the `console` icon from
-[Material Icon Theme](https://github.com/material-extensions/vscode-material-icon-theme)
-(MIT), unmodified, rasterised into the set Tauri bundles. It sits on
-transparency — no tile.
+The icon is Tide's mark — two notched brackets — with its slash swapped for a
+slanted `#`, rasterised into the set Tauri bundles. It sits on transparency —
+no tile.
 
 | File | What it is |
 |---|---|
-| `icons/icon.svg` | The master, copied from the theme. It is drawn on a 16-unit grid, so it serves every size. |
+| `icons/icon.svg` | The master. It is drawn on a 32-unit grid, so it serves every size. |
 | `icons/source.png` | The original trident-and-waves artwork, 1024². The mark the icon used to be cut from; kept so the older icons can be traced back. |
 | `icons/source-waves.png` | Just the two waves of that mark. Same story. |
 

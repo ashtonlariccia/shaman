@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rasterise the icon masters into the icon set Tauri bundles.
 
-One master feeds this: icons/icon.svg, the Material Icon Theme's stan icon.
+One master feeds this: icons/icon.svg, Tide's bracket mark with a `#` inside.
 It is a single flat shape, so it needs no separate small-size drawing.
 
 SVG is rendered by headless Chrome (or Edge) because it is the only rasteriser
