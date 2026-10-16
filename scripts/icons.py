@@ -14,6 +14,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ElementTree
 from pathlib import Path
 
 from PIL import Image
@@ -71,6 +72,13 @@ def browser() -> str:
 
 def render(svg: Path, work: Path) -> Image.Image:
     """Screenshot one SVG at MASTER_PX square, on transparency."""
+    # Chrome renders a malformed SVG as a broken-image placeholder rather than
+    # failing -- an XML comment holding a double hyphen is enough -- so
+    # check the XML before Chrome gets a chance to hide the problem.
+    try:
+        ElementTree.parse(svg)
+    except ElementTree.ParseError as e:
+        sys.exit(f"{svg.name}: not well-formed XML: {e}")
     # Chrome screenshots a page, not a file, and a bare SVG lands inside a
     # document with a default margin. The wrapper pins it to the corner at a
     # known size so the shot is exactly the artwork.
